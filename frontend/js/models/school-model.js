@@ -215,15 +215,26 @@ const schoolModel = {
    */
   resolveApiUrl(url) {
     if (!url || typeof url !== 'string') return url;
-    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
-      return url;
+
+    // Leave external URLs untouched
+    if (
+        url.startsWith('http://') ||
+        url.startsWith('https://') ||
+        url.startsWith('data:') ||
+        url.startsWith('blob:')
+    ) {
+        return url;
     }
-    if (url.startsWith('../backend/') || url.startsWith('backend/')) {
-      return url;
-    }
-    const inFrontend = (typeof window !== 'undefined' && window.location && window.location.pathname.includes('/frontend'));
-    const prefix = inFrontend ? '../backend/' : 'backend/';
-    return prefix + url.replace(/^\//, '');
+
+    // Remove old local backend prefixes if present
+    const cleanUrl = url
+        .replace(/^(\.\.\/)?backend\//, '')
+        .replace(/^\/+/, '');
+
+    // Your live Render backend
+    const API_BASE_URL = 'https://school-portal-backend-l4l2.onrender.com';
+
+    return `${API_BASE_URL}/${cleanUrl}`;
   },
 
   /**
@@ -231,13 +242,36 @@ const schoolModel = {
    */
   async safeFetch(url, options = {}) {
     const resolvedUrl = this.resolveApiUrl(url);
+
     try {
-      const response = await fetch(resolvedUrl, options);
-      const data = await response.json();
-      return { ok: response.ok, status: response.status, data };
+        const response = await fetch(resolvedUrl, {
+            ...options,
+
+            // Allow the browser to send and receive session cookies
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+
+        return {
+            ok: response.ok,
+            status: response.status,
+            data
+        };
+
     } catch (error) {
-      console.error(`Fetch error for ${url} (${resolvedUrl}):`, error);
-      return { ok: false, status: 500, data: { message: 'Network or server error.' } };
+        console.error(
+            `Fetch error for ${url} (${resolvedUrl}):`,
+            error
+        );
+
+        return {
+            ok: false,
+            status: 500,
+            data: {
+                message: 'Network or server error.'
+            }
+        };
     }
   },
 
