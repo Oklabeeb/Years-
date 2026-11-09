@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/cors.php';
 /**
  * api/student_analytics.php
  * Personalized Academic Performance & Visual Analytics for O'Level Students

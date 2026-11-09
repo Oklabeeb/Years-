@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/cors.php';
 /**
  * Administrator Governance API (Super Admin Management)
  * Handles inviting, role assignment, permissions, activation/suspension,

@@ -4826,14 +4826,28 @@ const SchoolView = {
     if (!url || typeof url !== 'string' || url === '#' || url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
       return url;
     }
-    const inFrontend = (typeof window !== 'undefined' && window.location && window.location.pathname.includes('/frontend'));
-    if (inFrontend) {
-      if (url.startsWith('../backend/')) return url;
-      if (url.startsWith('backend/')) return '../' + url;
-      if (url.startsWith('uploads/')) return '../backend/' + url;
-      if (!url.startsWith('../')) return '../' + url.replace(/^\//, '');
+    const isLocalhost = (typeof window !== 'undefined' && window.location && 
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+
+    if (isLocalhost && !window.USE_REMOTE_BACKEND) {
+      const inFrontend = window.location.pathname.includes('/frontend');
+      if (inFrontend) {
+        if (url.startsWith('../backend/')) return url;
+        if (url.startsWith('backend/')) return '../' + url;
+        if (url.startsWith('uploads/')) return '../backend/' + url;
+        if (!url.startsWith('../')) return '../' + url.replace(/^\//, '');
+      }
+      return url;
     }
-    return url;
+
+    if (window.schoolModel && typeof window.schoolModel.resolveApiUrl === 'function') {
+      return window.schoolModel.resolveApiUrl(url);
+    }
+
+    const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL)
+        ? window.API_BASE_URL.replace(/\/+$/, '')
+        : 'https://school-portal-backend-l4l2.onrender.com';
+    return `${API_BASE_URL}/${url.replace(/^\/+/, '')}`;
   },
 
   /* ==========================================================================

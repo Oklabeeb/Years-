@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../api/cors.php';
 /**
  * Admin Security & RBAC Guard Engine
  * Enforces Role-Based Access Control, session verification,

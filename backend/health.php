@@ -1,5 +1,5 @@
 <?php
-
+require_once __DIR__ . '/api/cors.php';
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/api/db.php';
@@ -10,7 +10,9 @@ try {
     echo json_encode([
         'success' => true,
         'backend' => 'working',
-        'database' => $result == 1 ? 'connected' : 'not connected'
+        'database' => $result == 1 ? 'connected' : 'not connected',
+        'env_frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '(not set)',
+        'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received'
     ]);
 
 } catch (Throwable $e) {
@@ -19,13 +21,11 @@ try {
     http_response_code(500);
 
     echo json_encode([
-    'success' => true,
-    'backend' => 'working',
-    'database' => $result == 1 ? 'connected' : 'not connected',
-
-    // Temporary CORS diagnostics
-    'auto_prepend_file' => ini_get('auto_prepend_file'),
-    'frontend_origin' => getenv('FRONTEND_ORIGIN'),
-    'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received',
-    'cors_headers' => headers_list()
-]);
+        'success' => false,
+        'backend' => 'working',
+        'database' => 'not connected',
+        'error' => $e->getMessage(),
+        'env_frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '(not set)',
+        'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received'
+    ]);
+}

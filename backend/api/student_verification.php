@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/cors.php';
 /**
  * api/student_verification.php
  * Handles Automated & Manual Student Payment Verification, ID Issuance, and Account Activation

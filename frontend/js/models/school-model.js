@@ -211,7 +211,7 @@ const schoolModel = {
   },
 
   /**
-   * Resolve API endpoint URL dynamically across frontend/ and root paths
+   * Resolve API endpoint URL dynamically across local and production cloud paths
    */
   resolveApiUrl(url) {
     if (!url || typeof url !== 'string') return url;
@@ -231,8 +231,19 @@ const schoolModel = {
         .replace(/^(\.\.\/)?backend\//, '')
         .replace(/^\/+/, '');
 
-    // Your live Render backend
-    const API_BASE_URL = 'https://school-portal-backend-l4l2.onrender.com';
+    // Allow overriding via window.API_BASE_URL (or auto-switch if on localhost)
+    const isLocalhost = (typeof window !== 'undefined' && window.location && 
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'));
+
+    if (isLocalhost && !window.USE_REMOTE_BACKEND) {
+        const inFrontend = window.location.pathname.includes('/frontend');
+        return (inFrontend ? '../backend/' : 'backend/') + cleanUrl;
+    }
+
+    // Live Render backend
+    const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL)
+        ? window.API_BASE_URL.replace(/\/+$/, '')
+        : 'https://school-portal-backend-l4l2.onrender.com';
 
     return `${API_BASE_URL}/${cleanUrl}`;
   },
@@ -247,11 +258,18 @@ const schoolModel = {
         const response = await fetch(resolvedUrl, {
             ...options,
 
-            // Allow the browser to send and receive session cookies
+            // Allow the browser to send and receive cross-site session cookies
             credentials: 'include'
         });
 
-        const data = await response.json();
+        const text = await response.text();
+        let data = null;
+        try {
+            data = text ? JSON.parse(text) : null;
+        } catch (jsonErr) {
+            console.warn(`Non-JSON response from ${resolvedUrl}:`, text);
+            data = { success: false, message: text || 'Server returned invalid JSON response.' };
+        }
 
         return {
             ok: response.ok,
@@ -269,7 +287,7 @@ const schoolModel = {
             ok: false,
             status: 500,
             data: {
-                message: 'Network or server error.'
+                message: error.message || 'Network or server error.'
             }
         };
     }
@@ -555,9 +573,12 @@ const schoolModel = {
     const noticesUrl = this.resolveApiUrl('api/notices.php');
     const res = await fetch(noticesUrl, {
       method: 'POST',
-      body: formData
+      body: formData,
+      credentials: 'include'
     });
-    const data = await res.json().catch(() => null);
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) {}
     if (res.ok && data && data.success) return data;
     throw new Error((data && data.message) || 'Failed to save notice.');
   },

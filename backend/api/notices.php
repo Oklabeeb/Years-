@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/cors.php';
 /**
  * School Notices & Staff Updates API
  * Allows Administrators to write, upload files, and edit notices

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/cors.php';
 /**
  * Admin Data Visualizations & Analytics API
  * Computes aggregated statistics for Charts, Line plots, Scatter plots, and Doughnuts
