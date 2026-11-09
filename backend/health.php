@@ -19,7 +19,13 @@ try {
     http_response_code(500);
 
     echo json_encode([
-        'success' => false,
-        'message' => 'Database test failed.'
-    ]);
-}
+    'success' => true,
+    'backend' => 'working',
+    'database' => $result == 1 ? 'connected' : 'not connected',
+
+    // Temporary CORS diagnostics
+    'auto_prepend_file' => ini_get('auto_prepend_file'),
+    'frontend_origin' => getenv('FRONTEND_ORIGIN'),
+    'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received',
+    'cors_headers' => headers_list()
+]);

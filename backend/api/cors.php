@@ -1,12 +1,11 @@
 
 <?php
 
-// The exact Vercel frontend address will be added in Render.
-$allowedOrigin = getenv('FRONTEND_ORIGIN');
-
+$allowedOrigin = trim(getenv('FRONTEND_ORIGIN') ?: '');
 $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+$requestMethod = $_SERVER['REQUEST_METHOD'] ?? '';
 
-if ($allowedOrigin && $origin === $allowedOrigin) {
+if ($allowedOrigin !== '' && $origin === $allowedOrigin) {
     header("Access-Control-Allow-Origin: $allowedOrigin");
     header('Access-Control-Allow-Credentials: true');
     header('Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -15,17 +14,19 @@ if ($allowedOrigin && $origin === $allowedOrigin) {
 }
 
 // Handle browser preflight requests.
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if ($requestMethod === 'OPTIONS') {
     http_response_code(204);
     exit;
 }
 
-// Configure secure cross-site PHP session cookies.
-session_set_cookie_params([
-    'lifetime' => 0,
-    'path' => '/',
-    'domain' => '',
-    'secure' => true,
-    'httponly' => true,
-    'samesite' => 'None'
-]);
+// Configure cross-site PHP session cookies before session_start().
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    session_set_cookie_params([
+        'lifetime' => 0,
+        'path' => '/',
+        'domain' => '',
+        'secure' => true,
+        'httponly' => true,
+        'samesite' => 'None'
+    ]);
+}
