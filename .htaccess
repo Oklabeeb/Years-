@@ -1,0 +1,10 @@
+# ==============================================================================
+# School Management Portal - Root Directory Router
+# ==============================================================================
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ frontend/index.html [L,R=302]
+</IfModule>
+<IfModule !mod_rewrite.c>
+    DirectoryIndex frontend/index.html
+</IfModule>

@@ -1,0 +1,31 @@
+# ==============================================================================
+# Git Ignore Configuration for School Portal
+# ==============================================================================
+
+# OS & Environment Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+.env
+
+# Ignored Workspace Items & Development Scratch Tests
+backend/.gitignore/
+backend/scratch/
+scratch/
+
+# User Uploaded Media (Preserves empty directory structure with .gitkeep)
+backend/uploads/assignments/*
+!backend/uploads/assignments/.gitkeep
+backend/uploads/notices/*
+!backend/uploads/notices/.gitkeep
+backend/uploads/resources/*
+!backend/uploads/resources/.gitkeep
+backend/uploads/submissions/*
+!backend/uploads/submissions/.gitkeep
+backend/uploads/chat/*
+!backend/uploads/chat/.gitkeep
+
+frontend/uploads/
+backend/api/db_backup.php
