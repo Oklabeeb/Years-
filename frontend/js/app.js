@@ -1142,6 +1142,34 @@ document.addEventListener('DOMContentLoaded', async () => {
       await SchoolView.initializeStudent();
     }
     schoolController.startBackgroundUnreadPolling();
+  } else {
+    // Handle redirect after student account activation (?student_id=STU-XXXX)
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const studentIdParam = urlParams.get('student_id');
+      if (studentIdParam) {
+        if (typeof selectPortalRole === 'function') {
+          selectPortalRole('student');
+        }
+        if (typeof setAuthMode === 'function') {
+          setAuthMode('login');
+        }
+        const emailInput = document.getElementById('loginEmail');
+        if (emailInput) {
+          emailInput.value = studentIdParam;
+        }
+        const passInput = document.getElementById('loginPassword');
+        if (passInput) {
+          passInput.focus();
+        }
+        const authHelper = document.getElementById('authHelper');
+        if (authHelper) {
+          authHelper.innerHTML = `<span style="color:#16a34a; font-weight:800;">🎉 Account Activated!</span> Official Student ID: <strong>${studentIdParam}</strong>. Enter your password to enter your student portal.`;
+        }
+      }
+    } catch (paramErr) {
+      console.warn('URL param parse error:', paramErr);
+    }
   }
 });
 

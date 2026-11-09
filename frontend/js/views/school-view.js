@@ -4393,13 +4393,20 @@ const SchoolView = {
     if (idEl) idEl.textContent = studentId;
     if (mailEl) mailEl.textContent = email;
     if (linkBtn) {
-      if (activationTokenOrLink && activationTokenOrLink.includes('activate_student.php')) {
-        linkBtn.href = activationTokenOrLink;
-      } else if (activationTokenOrLink) {
-        linkBtn.href = `activate_student.php?token=${encodeURIComponent(activationTokenOrLink)}`;
+      let resolvedLink = '';
+      if (activationTokenOrLink && (activationTokenOrLink.startsWith('http://') || activationTokenOrLink.startsWith('https://'))) {
+        resolvedLink = activationTokenOrLink;
+        if (resolvedLink.includes('onrender.com') && resolvedLink.startsWith('http://')) {
+          resolvedLink = resolvedLink.replace('http://', 'https://');
+        }
       } else {
-        linkBtn.href = 'activate_student.php';
+        const token = activationTokenOrLink ? encodeURIComponent(activationTokenOrLink) : '';
+        const target = token ? `activate_student.php?token=${token}` : 'activate_student.php';
+        resolvedLink = (window.schoolModel && typeof window.schoolModel.resolveApiUrl === 'function')
+          ? window.schoolModel.resolveApiUrl(target)
+          : target;
       }
+      linkBtn.href = resolvedLink;
     }
   },
 

@@ -314,8 +314,46 @@ try {
        6. CHECK STUDENT VERIFICATION & ID STATUS
        ========================================================================== */
     if ($action === 'check_verification_status') {
-        $email = trim($input['email'] ?? ($_GET['email'] ?? ''));
+        $token  = trim($input['token'] ?? ($_GET['token'] ?? ''));
+        $email  = trim($input['email'] ?? ($_GET['email'] ?? ''));
         $userId = (int)($input['user_id'] ?? ($_GET['user_id'] ?? 0));
+
+        if (!empty($token)) {
+            $stmt = $pdo->prepare("
+                SELECT a.*, u.name, u.email as user_email, u.program, u.department, u.student_id as current_student_id, u.is_verified, u.is_paid, u.status
+                FROM student_activations a
+                JOIN users u ON a.user_id = u.id
+                WHERE a.token = ?
+            ");
+            $stmt->execute([$token]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if (!$row) {
+                http_response_code(404);
+                echo json_encode(['success' => false, 'message' => 'Invalid activation token. Please verify the link in your email.']);
+                exit;
+            }
+
+            $isUsed = (int)$row['is_used'] === 1;
+            $isExpired = strtotime($row['expires_at']) < time();
+            $assignedId = !empty($row['student_id']) ? $row['student_id'] : ($row['current_student_id'] ?? '');
+
+            echo json_encode([
+                'success'     => true,
+                'token'       => $token,
+                'is_used'     => $isUsed,
+                'is_expired'  => $isExpired,
+                'user_id'     => (int)$row['user_id'],
+                'student_id'  => $assignedId,
+                'name'        => $row['name'],
+                'email'       => $row['user_email'],
+                'program'     => $row['program'] ?? 'WAEC',
+                'department'  => $row['department'] ?? 'Science',
+                'is_verified' => (int)($row['is_verified'] ?? 0) === 1,
+                'is_paid'     => (int)($row['is_paid'] ?? 0) === 1,
+                'status'      => $row['status'] ?? 'pending'
+            ]);
+            exit;
+        }
 
         if ($userId > 0) {
             $stmt = $pdo->prepare("SELECT id, name, email, student_id, is_verified, is_paid, status FROM users WHERE id = ?");

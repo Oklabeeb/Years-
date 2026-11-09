@@ -40,6 +40,18 @@ if (empty($token)) {
 }
 
 $assignedStudentId = $activationData['student_id'] ?? ($activationData['current_student_id'] ?? '');
+
+// Determine Portal Frontend URL dynamically across local and cloud environments
+$frontendEnv = trim((string)(getenv('FRONTEND_ORIGIN') ?: ''));
+if (!empty($frontendEnv)) {
+    $origins = array_map('trim', explode(',', $frontendEnv));
+    $portalUrl = rtrim($origins[0], '/');
+} else {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $isLocal = in_array($host, ['localhost', '127.0.0.1']) || strpos($host, 'localhost:') === 0;
+    $portalUrl = $isLocal ? '../frontend/index.html' : 'https://years-frontend-amber.vercel.app';
+}
+$loginUrlWithId = $portalUrl . (!empty($assignedStudentId) ? '?student_id=' . urlencode($assignedStudentId) : '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -187,7 +199,7 @@ $assignedStudentId = $activationData['student_id'] ?? ($activationData['current_
       <strong>⚠️ Activation Notice:</strong><br>
       <?php echo htmlspecialchars($error); ?>
     </div>
-    <a href="../frontend/index.html" class="login-link-btn">← Return to School Portal</a>
+    <a href="<?php echo htmlspecialchars($portalUrl); ?>" class="login-link-btn">← Return to School Portal</a>
 
   <?php elseif ($alreadyActivated): ?>
     <div class="alert alert-warning">
@@ -199,7 +211,7 @@ $assignedStudentId = $activationData['student_id'] ?? ($activationData['current_
       <div class="id-display"><?php echo htmlspecialchars($assignedStudentId); ?></div>
       <div class="id-note">You will use this Student ID and your password to sign in.</div>
     </div>
-    <a href="../frontend/index.html" class="login-link-btn">Proceed to Student Login →</a>
+    <a href="<?php echo htmlspecialchars($loginUrlWithId); ?>" class="login-link-btn">Proceed to Student Login →</a>
 
   <?php else: ?>
     <!-- ID Callout Card -->
@@ -242,7 +254,7 @@ $assignedStudentId = $activationData['student_id'] ?? ($activationData['current_
         <strong>🎉 Welcome aboard!</strong><br>
         Your portal account is now active. Your Student ID is <strong><?php echo htmlspecialchars($assignedStudentId); ?></strong>.
       </div>
-      <a href="../frontend/index.html" class="login-link-btn" style="background:#0284c7;">Go to Student Portal Login →</a>
+      <a href="<?php echo htmlspecialchars($loginUrlWithId); ?>" id="activationFinalLoginBtn" class="login-link-btn" style="background:#0284c7;">Go to Student Portal Login →</a>
     </div>
 
     <script>
@@ -294,6 +306,12 @@ $assignedStudentId = $activationData['student_id'] ?? ($activationData['current_
           if (res.ok && data.success) {
             form.style.display = 'none';
             successBlock.style.display = 'block';
+            const confirmedId = data.student_id || assignedId;
+            const btn = document.getElementById('activationFinalLoginBtn');
+            if (btn && confirmedId) {
+              const basePortal = <?php echo json_encode($portalUrl); ?>;
+              btn.href = basePortal + '?student_id=' + encodeURIComponent(confirmedId);
+            }
           } else {
             alertBox.className = 'alert alert-danger';
             alertBox.style.display = 'block';

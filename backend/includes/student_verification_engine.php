@@ -112,16 +112,28 @@ class StudentVerificationEngine {
         }
 
         // 7. Construct Activation URL
-        $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-        
-        // Compute base web path dynamically
-        $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/');
-        $scriptDir = str_replace('\\', '/', $scriptDir);
-        $scriptDir = preg_replace('#/(api|scratch|cli|admin)$#', '', $scriptDir);
-        $basePath = rtrim($scriptDir, '/');
+        $cloudBackend = getenv('BACKEND_URL') ?: (getenv('RENDER_EXTERNAL_URL') ?: '');
+        if (!empty($cloudBackend)) {
+            $activationUrl = rtrim($cloudBackend, '/') . "/activate_student.php?token={$token}";
+        } else {
+            $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
+                       (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https');
+            $protocol = $isHttps ? "https://" : "http://";
+            $host = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? ($_SERVER['HTTP_HOST'] ?? 'localhost');
 
-        $activationUrl = "{$protocol}{$host}{$basePath}/activate_student.php?token={$token}";
+            // Strip internal container ports (e.g. :10000) on cloud environments
+            if (strpos($host, 'onrender.com') !== false || $isHttps) {
+                $host = preg_replace('/:\d+$/', '', $host);
+            }
+
+            // Compute base web path dynamically
+            $scriptDir = dirname($_SERVER['SCRIPT_NAME'] ?? '/');
+            $scriptDir = str_replace('\\', '/', $scriptDir);
+            $scriptDir = preg_replace('#/(api|scratch|cli|admin|includes)$#', '', $scriptDir);
+            $basePath = rtrim($scriptDir, '/');
+
+            $activationUrl = "{$protocol}{$host}{$basePath}/activate_student.php?token={$token}";
+        }
 
         // 8. Build HTML Email
         $formattedAmount = '₦' . number_format($finalAmount, 2);

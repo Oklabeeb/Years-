@@ -1,3 +1,15 @@
+<?php
+// Determine Portal Frontend URL dynamically across local and cloud environments
+$frontendEnv = trim((string)(getenv('FRONTEND_ORIGIN') ?: ''));
+if (!empty($frontendEnv)) {
+    $origins = array_map('trim', explode(',', $frontendEnv));
+    $portalUrl = rtrim($origins[0], '/');
+} else {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $isLocal = in_array($host, ['localhost', '127.0.0.1']) || strpos($host, 'localhost:') === 0;
+    $portalUrl = $isLocal ? '../../frontend/index.html' : 'https://years-frontend-amber.vercel.app';
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -219,7 +231,7 @@
         // Direct Login Success
         showInfo('Authentication successful! Loading administrator workspace...');
         setTimeout(() => {
-          window.location.href = '../../frontend/index.html#admin';
+          window.location.href = <?php echo json_encode($portalUrl . '/#admin'); ?>;
         }, 600);
 
       } catch (err) {
@@ -255,7 +267,7 @@
 
         showInfo('Security verification passed! Redirecting to dashboard...');
         setTimeout(() => {
-          window.location.href = '../../frontend/index.html#admin';
+          window.location.href = <?php echo json_encode($portalUrl . '/#admin'); ?>;
         }, 600);
 
       } catch (err) {

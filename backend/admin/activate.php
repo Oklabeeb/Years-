@@ -10,6 +10,17 @@ $token = trim($_GET['token'] ?? ($_POST['token'] ?? ''));
 $error = '';
 $success = '';
 
+// Determine Portal Frontend URL dynamically across local and cloud environments
+$frontendEnv = trim((string)(getenv('FRONTEND_ORIGIN') ?: ''));
+if (!empty($frontendEnv)) {
+    $origins = array_map('trim', explode(',', $frontendEnv));
+    $portalUrl = rtrim($origins[0], '/');
+} else {
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $isLocal = in_array($host, ['localhost', '127.0.0.1']) || strpos($host, 'localhost:') === 0;
+    $portalUrl = $isLocal ? '../../frontend/index.html' : 'https://years-frontend-amber.vercel.app';
+}
+
 if (empty($token)) {
     $error = 'Missing activation token. Please use the complete link provided by your Super Administrator.';
 } else {
@@ -111,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
 
     <?php if (!empty($success)): ?>
       <div class="alert-success">✅ <?php echo htmlspecialchars($success); ?></div>
-      <a href="../#admin" class="btn" style="display:block; text-align:center; text-decoration:none; margin-top:1rem;">Proceed to Administrator Portal</a>
+      <a href="<?php echo htmlspecialchars($portalUrl . '/#admin'); ?>" class="btn" style="display:block; text-align:center; text-decoration:none; margin-top:1rem;">Proceed to Administrator Portal</a>
     <?php elseif (empty($error) && !empty($invitation)): ?>
       <div style="background:rgba(255,255,255,0.03); padding:0.85rem; border-radius:8px; margin-bottom:1.25rem; font-size:0.82rem;">
         <div>Invited User: <strong><?php echo htmlspecialchars($invitation['name']); ?></strong></div>
