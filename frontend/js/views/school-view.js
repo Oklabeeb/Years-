@@ -4577,17 +4577,194 @@ const SchoolView = {
      CAMPUS CHAT & DIRECT MESSAGING (WHATSAPP UI/UX) VIEW METHODS
      ------------------------------------------------------------------------ */
   updateHeaderChatBadge(count) {
-    const b = document.getElementById('headerChatBadge');
-    if (!b) return;
-    const num = Number(count) || 0;
-    if (num > 0) {
-      b.textContent = num > 99 ? '99+' : String(num);
-      b.classList.remove('hidden');
-      b.style.display = 'inline-block';
-    } else {
-      b.textContent = '0';
-      b.classList.add('hidden');
-      b.style.display = 'none';
+    this.updateAllChatBadges(count);
+  },
+
+  updateAllChatBadges(count) {
+    const num = Math.max(0, Number(count) || 0);
+    const countText = num > 99 ? '99+' : String(num);
+
+    // 1. Global Header Chat Button Badge
+    const headerBadge = document.getElementById('headerChatBadge');
+    if (headerBadge) {
+      if (num > 0) {
+        headerBadge.textContent = countText;
+        headerBadge.classList.remove('hidden');
+        headerBadge.style.display = 'inline-block';
+      } else {
+        headerBadge.textContent = '0';
+        headerBadge.classList.add('hidden');
+        headerBadge.style.display = 'none';
+      }
+    }
+
+    // 2. Student Workspace Dropdown Menu Badge
+    const studentMenuBadge = document.getElementById('studentChatMenuBadge');
+    if (studentMenuBadge) {
+      if (num > 0) {
+        studentMenuBadge.textContent = `${countText} Unread`;
+        studentMenuBadge.className = 'badge badge-red chat-unread-count-pill';
+      } else {
+        studentMenuBadge.textContent = 'Live';
+        studentMenuBadge.className = 'badge badge-blue';
+      }
+    }
+
+    // 3. Staff Workspace Dropdown Menu Badge
+    const staffMenuBadge = document.getElementById('staffChatMenuBadge');
+    if (staffMenuBadge) {
+      if (num > 0) {
+        staffMenuBadge.textContent = `${countText} Unread`;
+        staffMenuBadge.className = 'badge badge-red chat-unread-count-pill';
+      } else {
+        staffMenuBadge.textContent = 'Live';
+        staffMenuBadge.className = 'badge badge-blue';
+      }
+    }
+
+    // 4. Admin Workspace Dropdown Menu Badge
+    const adminMenuBadge = document.getElementById('adminChatMenuBadge');
+    if (adminMenuBadge) {
+      if (num > 0) {
+        adminMenuBadge.textContent = `${countText} Unread`;
+        adminMenuBadge.className = 'badge badge-red chat-unread-count-pill';
+      } else {
+        adminMenuBadge.textContent = 'Live';
+        adminMenuBadge.className = 'badge badge-gold';
+      }
+    }
+
+    // 5. Dashboard Feature Hub Card Badges (Student, Staff, Admin)
+    ['studentChatCardBadge', 'staffChatCardBadge', 'adminChatCardBadge'].forEach(cardBadgeId => {
+      const el = document.getElementById(cardBadgeId);
+      if (el) {
+        if (num > 0) {
+          el.textContent = `${countText} Unread`;
+          el.classList.remove('hidden');
+          el.style.display = 'inline-flex';
+        } else {
+          el.textContent = '0 Unread';
+          el.classList.add('hidden');
+          el.style.display = 'none';
+        }
+      }
+    });
+  },
+
+  /* ------------------------------------------------------------------------
+     5-SECOND CHAT DROPDOWN NOTIFICATION
+     ------------------------------------------------------------------------ */
+  _chatDropdownTimer: null,
+
+  showChatDropdownNotification(msg) {
+    if (!msg || !msg.message) return;
+
+    let dropdown = document.getElementById('chatNotificationDropdown');
+    if (!dropdown) {
+      dropdown = document.createElement('div');
+      dropdown.id = 'chatNotificationDropdown';
+      dropdown.className = 'chat-dropdown-notification hidden';
+      dropdown.setAttribute('role', 'alert');
+      dropdown.setAttribute('aria-live', 'assertive');
+      document.body.appendChild(dropdown);
+    }
+
+    // Clear any previous countdown timer
+    if (this._chatDropdownTimer) {
+      clearTimeout(this._chatDropdownTimer);
+      this._chatDropdownTimer = null;
+    }
+
+    const isGroup = msg.channel_type === 'group';
+    const senderName = msg.sender_name || 'School Member';
+    const senderRole = (msg.sender_role || 'user').toLowerCase();
+    const initials = senderName.split(' ').map(w => w.charAt(0)).filter(Boolean).slice(0, 2).join('').toUpperCase() || '💬';
+
+    let roleBadgeClass = 'badge-blue';
+    let roleBadgeText = 'Staff';
+    if (senderRole === 'admin') {
+      roleBadgeClass = 'badge-gold';
+      roleBadgeText = 'Admin';
+    } else if (senderRole === 'student') {
+      roleBadgeClass = 'badge-green';
+      roleBadgeText = 'Student';
+    }
+
+    const cleanSnippet = this.escapeHtml(msg.message.length > 85 ? (msg.message.slice(0, 85) + '...') : msg.message);
+    const headerTitle = isGroup ? `💬 Campus General: ${this.escapeHtml(senderName)}` : `💬 ${this.escapeHtml(senderName)}`;
+
+    dropdown.innerHTML = `
+      <div class="chat-dropdown-inner" onclick="schoolController.handleChatNotificationClick(${JSON.stringify(msg).replace(/"/g, '&quot;')})">
+        <div class="chat-dropdown-avatar">${this.escapeHtml(initials)}</div>
+        <div class="chat-dropdown-content">
+          <div class="chat-dropdown-header">
+            <div style="display:flex; align-items:center; gap:0.4rem; min-width:0;">
+              <span class="chat-dropdown-sender">${headerTitle}</span>
+              <span class="badge ${roleBadgeClass} chat-dropdown-badge">${roleBadgeText}</span>
+            </div>
+            <button type="button" class="chat-dropdown-close" onclick="event.stopPropagation(); SchoolView.hideChatDropdownNotification();" title="Dismiss">✕</button>
+          </div>
+          <p class="chat-dropdown-message">${cleanSnippet}</p>
+        </div>
+      </div>
+      <div class="chat-dropdown-progress"></div>
+    `;
+
+    // Make visible with smooth slide-down animation
+    dropdown.classList.remove('hidden');
+    // Force browser reflow to restart css animation
+    void dropdown.offsetWidth;
+    dropdown.classList.add('show');
+
+    // Play subtle audio chime
+    this.playChatNotificationChime();
+
+    // Auto-dismiss exactly after 5 seconds (5000ms)
+    this._chatDropdownTimer = setTimeout(() => {
+      this.hideChatDropdownNotification();
+    }, 5000);
+  },
+
+  hideChatDropdownNotification() {
+    if (this._chatDropdownTimer) {
+      clearTimeout(this._chatDropdownTimer);
+      this._chatDropdownTimer = null;
+    }
+    const dropdown = document.getElementById('chatNotificationDropdown');
+    if (dropdown) {
+      dropdown.classList.remove('show');
+      setTimeout(() => {
+        if (!dropdown.classList.contains('show')) {
+          dropdown.classList.add('hidden');
+        }
+      }, 350);
+    }
+  },
+
+  playChatNotificationChime() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(698.46, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+
+      gain.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.28);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.3);
+      setTimeout(() => { ctx.close().catch(() => {}); }, 400);
+    } catch (e) {
+      // Audio context may require prior user interaction
     }
   },
 

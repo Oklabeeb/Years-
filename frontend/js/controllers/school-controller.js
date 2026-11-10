@@ -2918,6 +2918,9 @@ const schoolController = {
       if (msgs.length > 0) {
         this._chatState.lastMessageId = msgs[msgs.length - 1].id;
       }
+      if (type === 'direct') {
+        this.pollUnreadCounters();
+      }
 
       const targetInfo = messagesData.target_info || {};
       const isGeneral = type === 'group' && target === 'general';
@@ -3469,6 +3472,7 @@ const schoolController = {
   /* REAL-TIME LIVE SYNC (NO MANUAL REFRESH) */
   startPortalLiveSync() {
     this.stopPortalLiveSync();
+    this.startBackgroundUnreadPolling();
     // 5-second automatic sync interval for instant upload and log reflections
     this._liveSyncTimer = setInterval(() => {
       this.runLiveSyncTick();
@@ -3482,6 +3486,7 @@ const schoolController = {
       clearInterval(this._liveSyncTimer);
       this._liveSyncTimer = null;
     }
+    this.stopBackgroundUnreadPolling();
   },
 
   async runLiveSyncTick() {
@@ -3492,6 +3497,12 @@ const schoolController = {
 
       if (!this._lastLiveSyncState) {
         this._lastLiveSyncState = sync;
+        if (sync.latest_chat_id) {
+          this._lastKnownChatId = sync.latest_chat_id;
+        }
+        if (sync.total_unread_chats !== undefined) {
+          SchoolView.updateAllChatBadges(sync.total_unread_chats);
+        }
         return;
       }
 
@@ -3574,6 +3585,33 @@ const schoolController = {
         }
       }
 
+      // 10. Live Chat Unread Badges across all portals & 5-Second Dropdown Notification
+      if (sync.total_unread_chats !== undefined) {
+        SchoolView.updateAllChatBadges(sync.total_unread_chats);
+      }
+
+      if (sync.latest_chat && sync.latest_chat_id) {
+        if (!this._lastKnownChatId) {
+          this._lastKnownChatId = sync.latest_chat_id;
+        } else if (sync.latest_chat_id > this._lastKnownChatId) {
+          this._lastKnownChatId = sync.latest_chat_id;
+          const msg = sync.latest_chat;
+          if (msg.sender_id !== schoolModel.user.id) {
+            const isCurrentlyViewingThisThread = (
+              this._chatState.activeType === msg.channel_type &&
+              (
+                (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
+                (msg.channel_type === 'group' && this._chatState.activeTarget === 'general')
+              ) &&
+              (document.getElementById('chatMessagesStream') && document.getElementById('chatMessagesStream').offsetParent !== null)
+            );
+            if (!isCurrentlyViewingThisThread) {
+              SchoolView.showChatDropdownNotification(msg);
+            }
+          }
+        }
+      }
+
       this._lastLiveSyncState = sync;
     } catch (syncErr) {
       // background tick error ignored
@@ -3629,7 +3667,7 @@ const schoolController = {
     this.pollUnreadCounters();
     this._chatState.unreadTimer = setInterval(() => {
       this.pollUnreadCounters();
-    }, 12000);
+    }, 3500);
   },
 
   stopBackgroundUnreadPolling() {
@@ -3644,9 +3682,64 @@ const schoolController = {
     try {
       const status = await schoolModel.pollChatUnread();
       if (status && status.success) {
-        SchoolView.updateHeaderChatBadge(status.total_unread_dms || 0);
+        const unreadCount = status.total_unread_dms || 0;
+        SchoolView.updateAllChatBadges(unreadCount);
+
+        if (status.latest_chat && status.latest_chat_id) {
+          if (!this._lastKnownChatId) {
+            this._lastKnownChatId = status.latest_chat_id;
+          } else if (status.latest_chat_id > this._lastKnownChatId) {
+            this._lastKnownChatId = status.latest_chat_id;
+            const msg = status.latest_chat;
+            if (msg.sender_id !== schoolModel.user.id) {
+              const isCurrentlyViewingThisThread = (
+                this._chatState.activeType === msg.channel_type &&
+                (
+                  (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
+                  (msg.channel_type === 'group' && this._chatState.activeTarget === 'general')
+                ) &&
+                (document.getElementById('chatMessagesStream') && document.getElementById('chatMessagesStream').offsetParent !== null)
+              );
+              if (!isCurrentlyViewingThisThread) {
+                SchoolView.showChatDropdownNotification(msg);
+              }
+            }
+          }
+        }
       }
     } catch (e) {}
+  },
+
+  handleChatNotificationClick(msg) {
+    SchoolView.hideChatDropdownNotification();
+    if (!schoolModel.user) return;
+
+    const role = schoolModel.user.role;
+    if (role === 'student') {
+      if (typeof openWorkspace === 'function') {
+        openWorkspace('chat');
+      }
+    } else if (role === 'staff') {
+      if (typeof selectStaffWorkspaceDropdownItem === 'function') {
+        selectStaffWorkspaceDropdownItem('chat');
+      }
+    } else if (role === 'admin') {
+      if (typeof selectAdminWorkspaceDropdownItem === 'function') {
+        selectAdminWorkspaceDropdownItem('chat');
+      }
+    } else {
+      this.openCampusChatModal();
+    }
+
+    if (msg) {
+      setTimeout(() => {
+        if (msg.channel_type === 'direct' && msg.sender_id) {
+          this.selectChatTarget('direct', msg.sender_id);
+        } else {
+          this.selectChatTarget('group', 'general');
+        }
+      }, 350);
+    }
   },
 
   /* ==========================================================================

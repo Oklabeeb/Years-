@@ -1862,18 +1862,173 @@
 
   .chat-header-badge {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    background: var(--wa-green-light);
-    color: #111b21;
+    top: -5px;
+    right: -6px;
+    background: #ef4444;
+    color: #ffffff;
     border-radius: 999px;
     font-size: 0.65rem;
     font-weight: 850;
     padding: 1px 5px;
-    min-width: 17px;
+    min-width: 18px;
     text-align: center;
-    box-shadow: 0 2px 6px rgba(37, 211, 102, 0.4);
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
     line-height: 1.3;
+    z-index: 5;
+    animation: unreadPulse 2s infinite;
+  }
+
+  .chat-unread-count-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    font-size: 0.72rem;
+    font-weight: 850;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.45);
+    animation: unreadPulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes unreadPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+  }
+
+  /* Sleek 5-second dropdown notification for incoming chats */
+  .chat-dropdown-notification {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    max-width: 390px;
+    width: calc(100% - 48px);
+    z-index: 999999;
+    background: var(--card, #ffffff);
+    color: var(--text, #0f172a);
+    border-radius: 16px;
+    box-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(23, 107, 80, 0.25);
+    border: 1px solid rgba(23, 107, 80, 0.2);
+    overflow: hidden;
+    cursor: pointer;
+    transform: translateY(-130%);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+    backdrop-filter: blur(14px);
+  }
+
+  [data-theme="dark"] .chat-dropdown-notification {
+    background: #1e293b;
+    color: #f8fafc;
+    box-shadow: 0 18px 45px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(114, 198, 165, 0.35);
+    border-color: rgba(114, 198, 165, 0.25);
+  }
+
+  .chat-dropdown-notification.show {
+    transform: translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .chat-dropdown-inner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+    position: relative;
+  }
+
+  .chat-dropdown-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #176b50, #10b981);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 1.05rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3);
+  }
+
+  .chat-dropdown-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chat-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .chat-dropdown-sender {
+    font-weight: 800;
+    font-size: 0.9rem;
+    color: var(--text, #0f172a);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chat-dropdown-badge {
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 0.15rem 0.5rem;
+    border-radius: 6px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .chat-dropdown-message {
+    font-size: 0.82rem;
+    color: var(--muted, #64748b);
+    margin: 0;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .chat-dropdown-close {
+    background: transparent;
+    border: none;
+    color: var(--muted, #94a3b8);
+    font-size: 1.15rem;
+    cursor: pointer;
+    padding: 0 0.35rem;
+    line-height: 1;
+    border-radius: 6px;
+    transition: color 0.15s ease;
+  }
+
+  .chat-dropdown-close:hover {
+    color: #ef4444;
+  }
+
+  .chat-dropdown-progress {
+    height: 3px;
+    background: #10b981;
+    width: 100%;
+    transform-origin: left center;
+    animation: chatProgressCountdown 5s linear forwards;
+  }
+
+  @keyframes chatProgressCountdown {
+    from { width: 100%; }
+    to { width: 0%; }
   }
 
   /* Main Container */
@@ -3547,6 +3702,9 @@
   </div>
 </header>
 
+<!-- FLOATING 5-SECOND CHAT DROPDOWN NOTIFICATION -->
+<div id="chatNotificationDropdown" class="chat-dropdown-notification hidden" role="alert" aria-live="assertive"></div>
+
 <!-- LOGIN -->
 <div id="loginScreen" class="login-screen">
   <div class="login-card">
@@ -3975,7 +4133,10 @@
 
           <div class="feature-hub-card" onclick="openWorkspace('chat')">
             <div>
-              <div class="feature-hub-icon">💬</div>
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div class="feature-hub-icon">💬</div>
+                <span class="chat-unread-count-pill hidden" id="studentChatCardBadge">0 Unread</span>
+              </div>
               <h3 class="feature-hub-title">Campus Chat & DMs</h3>
               <p class="feature-hub-desc">Direct messaging with your subject teachers, peer academic group study, and community discussions.</p>
             </div>
@@ -5091,7 +5252,10 @@
 
         <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('chat')">
           <div>
-            <div class="feature-hub-icon">💬</div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+              <div class="feature-hub-icon">💬</div>
+              <span class="chat-unread-count-pill hidden" id="staffChatCardBadge">0 Unread</span>
+            </div>
             <h3 class="feature-hub-title">Campus Chat & DMs</h3>
             <p class="feature-hub-desc">Real-time messaging with individual students, fellow teachers, and community general forum.</p>
           </div>
@@ -6133,7 +6297,10 @@
 
       <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('chat')">
         <div>
-          <div class="feature-hub-icon">💬</div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div class="feature-hub-icon">💬</div>
+            <span class="chat-unread-count-pill hidden" id="adminChatCardBadge">0 Unread</span>
+          </div>
           <h3 class="feature-hub-title">Campus Chat & Governance</h3>
           <p class="feature-hub-desc">Direct communication with students and faculty, campus community forum, message moderation, and clear chat.</p>
         </div>

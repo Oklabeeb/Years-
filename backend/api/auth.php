@@ -1244,6 +1244,55 @@ if ($action === 'live_sync') {
         $syncData['latest_payroll_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM staff_payroll_disbursements")->fetchColumn();
     } catch (Throwable $e) { $syncData['latest_payroll_id'] = 0; }
 
+    // Chat unread count & latest chat message for instant dropdown alerts
+    try {
+        $chatUnreadStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM chat_messages 
+            WHERE recipient_id = ? AND channel_type = 'direct' AND is_read = 0 AND deleted_at IS NULL
+        ");
+        $chatUnreadStmt->execute([$myId]);
+        $syncData['total_unread_chats'] = (int)$chatUnreadStmt->fetchColumn();
+
+        $latestChatStmt = $pdo->prepare("
+            SELECT m.id, m.sender_id, m.recipient_id, m.channel_type, m.channel_name, m.message, m.created_at,
+                   u.name AS sender_name, u.role AS sender_role
+            FROM chat_messages m
+            JOIN users u ON u.id = m.sender_id
+            WHERE m.sender_id != ?
+              AND m.deleted_at IS NULL
+              AND (
+                  (m.channel_type = 'direct' AND m.recipient_id = ?)
+                  OR (m.channel_type = 'group')
+              )
+            ORDER BY m.id DESC
+            LIMIT 1
+        ");
+        $latestChatStmt->execute([$myId, $myId]);
+        $latestChat = $latestChatStmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($latestChat) {
+            $syncData['latest_chat'] = [
+                'id' => (int)$latestChat['id'],
+                'sender_id' => (int)$latestChat['sender_id'],
+                'recipient_id' => $latestChat['recipient_id'] ? (int)$latestChat['recipient_id'] : null,
+                'sender_name' => $latestChat['sender_name'],
+                'sender_role' => $latestChat['sender_role'],
+                'channel_type' => $latestChat['channel_type'],
+                'channel_name' => $latestChat['channel_name'],
+                'message' => $latestChat['message'],
+                'created_at' => $latestChat['created_at']
+            ];
+            $syncData['latest_chat_id'] = (int)$latestChat['id'];
+        } else {
+            $syncData['latest_chat_id'] = 0;
+            $syncData['latest_chat'] = null;
+        }
+    } catch (Throwable $e) {
+        $syncData['total_unread_chats'] = 0;
+        $syncData['latest_chat_id'] = 0;
+        $syncData['latest_chat'] = null;
+    }
+
     if ($myRole === 'admin') {
         // Admin metrics: student registrations, pending verifications
         $stCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'")->fetchColumn();

@@ -666,10 +666,47 @@ if ($action === 'poll_unread') {
         ");
         $maxGeneralId = (int)$maxGenStmt->fetchColumn();
 
+        // Fetch latest incoming chat message for instant 5-second dropdown notification
+        $latestChatStmt = $pdo->prepare("
+            SELECT m.id, m.sender_id, m.recipient_id, m.channel_type, m.channel_name, m.message, m.created_at,
+                   u.name AS sender_name, u.role AS sender_role
+            FROM chat_messages m
+            JOIN users u ON u.id = m.sender_id
+            WHERE m.sender_id != ?
+              AND m.deleted_at IS NULL
+              AND (
+                  (m.channel_type = 'direct' AND m.recipient_id = ?)
+                  OR (m.channel_type = 'group')
+              )
+            ORDER BY m.id DESC
+            LIMIT 1
+        ");
+        $latestChatStmt->execute([$myId, $myId]);
+        $latestChat = $latestChatStmt->fetch(PDO::FETCH_ASSOC);
+
+        $latestChatData = null;
+        $latestChatId = 0;
+        if ($latestChat) {
+            $latestChatData = [
+                'id' => (int)$latestChat['id'],
+                'sender_id' => (int)$latestChat['sender_id'],
+                'recipient_id' => $latestChat['recipient_id'] ? (int)$latestChat['recipient_id'] : null,
+                'sender_name' => $latestChat['sender_name'],
+                'sender_role' => $latestChat['sender_role'],
+                'channel_type' => $latestChat['channel_type'],
+                'channel_name' => $latestChat['channel_name'],
+                'message' => $latestChat['message'],
+                'created_at' => $latestChat['created_at']
+            ];
+            $latestChatId = (int)$latestChat['id'];
+        }
+
         echo json_encode([
             'success' => true,
             'total_unread_dms' => $totalUnreadDms,
-            'latest_general_msg_id' => $maxGeneralId
+            'latest_general_msg_id' => $maxGeneralId,
+            'latest_chat' => $latestChatData,
+            'latest_chat_id' => $latestChatId
         ]);
         exit;
 
