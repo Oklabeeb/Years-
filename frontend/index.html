@@ -1237,6 +1237,28 @@
     font-weight: 800 !important;
   }
 
+  .top-notification-center {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+    position: relative;
+    z-index: 10;
+  }
+  .top-notices-banner {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .top-notice-alert-bar {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    backdrop-filter: blur(8px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .top-notice-alert-bar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.09);
+  }
+
   .workspace-main { min-width:0; }
   .workspace-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:1rem; margin:.2rem 0 1.2rem; }
   .workspace-heading h1 { font-size:1.8rem; letter-spacing:-.06em; line-height:1.1; }
@@ -3760,6 +3782,14 @@
               <span class="ws-icon">📖</span>
               <span class="ws-text">Textbooks</span>
             </button>
+            <button type="button" class="ws-dropdown-link" data-page="analytics" onclick="selectWorkspaceDropdownItem('analytics')">
+              <span class="ws-icon">📊</span>
+              <span class="ws-text">Academic Analytics</span>
+            </button>
+            <button type="button" class="ws-dropdown-link" data-page="notices" onclick="selectWorkspaceDropdownItem('notices')">
+              <span class="ws-icon">📢</span>
+              <span class="ws-text">School Notices & Bulletins</span>
+            </button>
             <button type="button" class="ws-dropdown-link" data-page="chat" onclick="selectWorkspaceDropdownItem('chat')">
               <span class="ws-icon">💬</span>
               <span class="ws-text">Campus Chat & DMs</span>
@@ -3788,6 +3818,14 @@
         <p class="eyebrow" id="workspaceEyebrow">STUDENT WORKSPACE</p>
         <h1 id="workspaceTitle">Dashboard</h1>
       </div>
+    </div>
+
+    <!-- TOP PORTAL NOTIFICATION & BULLETIN BANNER (STUDENT) -->
+    <div id="studentTopNotificationCenter" class="top-notification-center" aria-live="polite">
+      <!-- Live Google Meet Class Alert Banner -->
+      <div id="studentLiveClassAlert" aria-live="polite"></div>
+      <!-- Official School Notices & Bulletins Top Alert Bar -->
+      <div id="studentTopNoticesBanner" class="top-notices-banner" aria-live="polite"></div>
     </div>
 
     <section class="workspace-page" id="page-dashboard">
@@ -3824,72 +3862,6 @@
         </div>
       </div>
 
-      <!-- QUICK ACTION LAUNCHPAD (EFFORTLESS 1-CLICK NAVIGATION FOR STUDENTS) -->
-      <div class="student-quick-launchpad" id="studentQuickLaunchpad">
-        <button type="button" class="launch-card launch-cbt" onclick="openWorkspace('school')">
-          <div class="launch-icon-wrap"><span class="launch-icon">🎯</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">Practice CBT Exam</strong>
-            <small class="launch-desc">WAEC & JAMB Question Bank</small>
-          </div>
-          <span class="launch-pill">ALOC Station →</span>
-        </button>
-
-        <button type="button" class="launch-card launch-assignments" onclick="openWorkspace('assignments')">
-          <div class="launch-icon-wrap"><span class="launch-icon">📝</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">Assignments & Tasks</strong>
-            <small class="launch-desc">Submit & Track Grades</small>
-          </div>
-          <span class="launch-pill count-pill" id="launchPendingAsgnCount">0 to do</span>
-        </button>
-
-        <button type="button" class="launch-card launch-timetable" onclick="openWorkspace('timetable')">
-          <div class="launch-icon-wrap"><span class="launch-icon">📅</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">Today's Timetable</strong>
-            <small class="launch-desc">Class Schedule & Meet</small>
-          </div>
-          <span class="launch-pill">View Schedule →</span>
-        </button>
-
-        <button type="button" class="launch-card launch-chat" onclick="openWorkspace('chat')">
-          <div class="launch-icon-wrap"><span class="launch-icon">💬</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">Campus Chat & DMs</strong>
-            <small class="launch-desc">Connect with Teachers & Peers</small>
-          </div>
-          <span class="launch-pill live-pill">Active Live</span>
-        </button>
-
-        <button type="button" class="launch-card launch-leaderboard" onclick="openWorkspace('leaderboard')">
-          <div class="launch-icon-wrap"><span class="launch-icon">🏆</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">Academic Leaderboard</strong>
-            <small class="launch-desc">Track Ranks & Merit Points</small>
-          </div>
-          <span class="launch-pill gold-pill">Standings →</span>
-        </button>
-
-        <button type="button" class="launch-card launch-textbooks" onclick="openWorkspace('textbooks')">
-          <div class="launch-icon-wrap"><span class="launch-icon">📖</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">E-Textbooks & Past Papers</strong>
-            <small class="launch-desc">Curriculum PDFs & Syllabus</small>
-          </div>
-          <span class="launch-pill">Library →</span>
-        </button>
-
-        <button type="button" class="launch-card launch-fees" onclick="schoolController.openStudentBillingModal()">
-          <div class="launch-icon-wrap"><span class="launch-icon">💳</span></div>
-          <div class="launch-info">
-            <strong class="launch-title">Fees & Receipts</strong>
-            <small class="launch-desc">Tuition & Verified Invoices</small>
-          </div>
-          <span class="launch-pill">Billing →</span>
-        </button>
-      </div>
-
       <!-- KEY ACADEMIC KPI STAT CARDS -->
       <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
         <button class="stat-card stat-action" onclick="openWorkspace('courses')">
@@ -3899,7 +3871,7 @@
           <div class="hint">Active curriculum list →</div>
         </button>
 
-        <button class="stat-card stat-action" onclick="document.getElementById('studentAnalyticsSection')?.scrollIntoView({behavior:'smooth'})">
+        <button class="stat-card stat-action" onclick="openWorkspace('analytics')">
           <span class="stat-icon" style="background:rgba(16,185,129,.1); color:#10b981;">🎯</span>
           <div class="label">Exam Readiness Index</div>
           <div class="value" id="studentKpiReadiness">--%</div>
@@ -3928,8 +3900,160 @@
         </button>
       </div>
 
-      <!-- VISUAL ACADEMIC ANALYTICS HUB -->
-      <section class="card student-analytics-hub" id="studentAnalyticsSection" style="margin: 1.5rem 0; border: 1.5px solid rgba(59,130,246,0.25);">
+      <!-- STUDENT ACADEMIC FEATURE HUB & QUICK NAVIGATION CARDS (ADMIN STYLE) -->
+      <div style="margin-top:1.5rem;">
+        <div class="section-heading" style="margin-bottom:.75rem;">
+          <div>
+            <p class="eyebrow">ACADEMIC & LEARNING MODULES</p>
+            <h2 style="font-size:1.3rem;">Student Portal Features</h2>
+          </div>
+        </div>
+
+        <div class="feature-hub-grid">
+          <div class="feature-hub-card" onclick="openWorkspace('school')">
+            <div>
+              <div class="feature-hub-icon">🎯</div>
+              <h3 class="feature-hub-title">Practice CBT Exam</h3>
+              <p class="feature-hub-desc">WAEC & JAMB official past questions engine with custom exam timers, instant scoring, and answer explanations.</p>
+            </div>
+            <span class="feature-hub-action">Open ALOC Station →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('assignments')">
+            <div>
+              <div class="feature-hub-icon">📝</div>
+              <h3 class="feature-hub-title">Assignments & Homework</h3>
+              <p class="feature-hub-desc">Check upcoming deadlines, download teacher worksheets, submit coursework files, and track evaluation grades.</p>
+            </div>
+            <span class="feature-hub-action">View Assignments →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('timetable')">
+            <div>
+              <div class="feature-hub-icon">📅</div>
+              <h3 class="feature-hub-title">Today's Class Timetable</h3>
+              <p class="feature-hub-desc">Daily subject schedule, venues, live Google Meet classroom links, and 1-day notification reminders.</p>
+            </div>
+            <span class="feature-hub-action">View Timetable →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('textbooks')">
+            <div>
+              <div class="feature-hub-icon">📖</div>
+              <h3 class="feature-hub-title">Curriculum E-Textbooks</h3>
+              <p class="feature-hub-desc">Access approved secondary school digital textbooks, syllabi, and reference reading books for enrolled subjects.</p>
+            </div>
+            <span class="feature-hub-action">Open E-Library →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('pastquestions')">
+            <div>
+              <div class="feature-hub-icon">📂</div>
+              <h3 class="feature-hub-title">Past Examination Papers</h3>
+              <p class="feature-hub-desc">Downloadable WAEC & JAMB past question papers with official subject marking schemes and worked solutions.</p>
+            </div>
+            <span class="feature-hub-action">Browse Past Papers →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('leaderboard')">
+            <div>
+              <div class="feature-hub-icon">🏆</div>
+              <h3 class="feature-hub-title">Academic Leaderboard</h3>
+              <p class="feature-hub-desc">Track your standing, points summation across 5 academic pillars, and compare rankings with peers.</p>
+            </div>
+            <span class="feature-hub-action">View Standings →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('analytics')">
+            <div>
+              <div class="feature-hub-icon">📊</div>
+              <h3 class="feature-hub-title">Academic Analytics</h3>
+              <p class="feature-hub-desc">Visual breakdown of subject mastery, 50-30-20 exam readiness gauge, study streak, and distinction pace.</p>
+            </div>
+            <span class="feature-hub-action">View Analytics →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('chat')">
+            <div>
+              <div class="feature-hub-icon">💬</div>
+              <h3 class="feature-hub-title">Campus Chat & DMs</h3>
+              <p class="feature-hub-desc">Direct messaging with your subject teachers, peer academic group study, and community discussions.</p>
+            </div>
+            <span class="feature-hub-action">Open Messenger →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('attendance')">
+            <div>
+              <div class="feature-hub-icon">📋</div>
+              <h3 class="feature-hub-title">Attendance & Punctuality</h3>
+              <p class="feature-hub-desc">Monitor recorded school days, daily present/late marks, and term attendance consistency streak.</p>
+            </div>
+            <span class="feature-hub-action">Check Attendance →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('courses')">
+            <div>
+              <div class="feature-hub-icon">📚</div>
+              <h3 class="feature-hub-title">Enrolled Subjects</h3>
+              <p class="feature-hub-desc">Active academic curriculum list, compulsory core subjects, and departmental courses.</p>
+            </div>
+            <span class="feature-hub-action">View Subjects →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('examinations')">
+            <div>
+              <div class="feature-hub-icon">🗓️</div>
+              <h3 class="feature-hub-title">Examinations Timetable</h3>
+              <p class="feature-hub-desc">Upcoming term examination dates, mock assessments schedule, countdown timers, and guidelines.</p>
+            </div>
+            <span class="feature-hub-action">Check Exams →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="openWorkspace('notices')">
+            <div>
+              <div class="feature-hub-icon">📢</div>
+              <h3 class="feature-hub-title">School Notices & Bulletins</h3>
+              <p class="feature-hub-desc">Official school announcements, academic directives, holiday bulletins, circulars, and attachments.</p>
+            </div>
+            <span class="feature-hub-action">Read Bulletins →</span>
+          </div>
+
+          <div class="feature-hub-card" onclick="schoolController.openStudentBillingModal()">
+            <div>
+              <div class="feature-hub-icon">💳</div>
+              <h3 class="feature-hub-title">Tuition Fees & Receipts</h3>
+              <p class="feature-hub-desc">Verified payment receipts, 10% monthly discount fee plan, and instant tuition clearance status.</p>
+            </div>
+            <span class="feature-hub-action">Open Billing →</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TODAY'S SCHEDULE & NEXT EXAMS PREVIEWS -->
+      <div class="workspace-columns" style="margin-top:1.5rem;">
+        <section class="card">
+          <div class="section-heading"><div><p class="eyebrow">YOUR DAY</p><h2>Today's timetable</h2></div><button class="text-button" onclick="openWorkspace('timetable')">Full timetable →</button></div>
+          <div id="todaySchedule" class="schedule-list"></div>
+        </section>
+        <section class="card">
+          <div class="section-heading"><div><p class="eyebrow">KEEP ON TRACK</p><h2>Next examinations</h2></div><button class="text-button" onclick="openWorkspace('examinations')">All exams →</button></div>
+          <div id="dashboardExams" class="simple-list"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- DEDICATED STUDENT PAGE: ACADEMIC ANALYTICS -->
+    <section class="workspace-page hidden" id="page-analytics">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Academic Performance Analytics & O'Level Insights</strong>
+        </div>
+        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentAnalytics()">🔄 Refresh Analytics</button>
+      </div>
+
+      <section class="card student-analytics-hub" id="studentAnalyticsSection" style="margin-top:1rem; border: 1.5px solid rgba(59,130,246,0.25);">
         <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; border-bottom:1px solid var(--border); padding-bottom:.9rem;">
           <div>
             <p class="eyebrow" style="color:var(--primary); font-weight:800; letter-spacing:1px;">STUDENT PERFORMANCE & EXAM PREPAREDNESS</p>
@@ -3939,7 +4063,7 @@
           </div>
           <div style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">
             <span class="badge badge-green" id="studentAnalyticsStatusBadge">● Analytics Synced</span>
-            <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentAnalytics()" style="padding:.35rem .75rem; font-weight:700; border-radius:8px;">🔄 Refresh Analytics</button>
+            <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentAnalytics()" style="padding:.35rem .75rem; font-weight:700; border-radius:8px;">🔄 Refresh</button>
           </div>
         </div>
 
@@ -4046,44 +4170,27 @@
 
         </div>
       </section>
-      <!-- LIVE GOOGLE MEET CLASS ALERT BANNER -->
-      <div id="studentLiveClassAlert" aria-live="polite"></div>
+    </section>
 
-      <div class="workspace-columns">
-        <section class="card">
-          <div class="section-heading"><div><p class="eyebrow">YOUR DAY</p><h2>Today's timetable</h2></div><button class="text-button" onclick="openWorkspace('timetable')">Full timetable →</button></div>
-          <div id="todaySchedule" class="schedule-list"></div>
-        </section>
-        <section class="card">
-          <div class="section-heading"><div><p class="eyebrow">KEEP ON TRACK</p><h2>Next examinations</h2></div><button class="text-button" onclick="openWorkspace('examinations')">All exams →</button></div>
-          <div id="dashboardExams" class="simple-list"></div>
-        </section>
+    <!-- DEDICATED STUDENT PAGE: ACADEMIC LEADERBOARD -->
+    <section class="workspace-page hidden" id="page-leaderboard">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Academic Leaderboard & Rankings</strong>
+        </div>
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <span class="badge badge-green" id="studentLeaderboardTotalBadge">Standings Active</span>
+          <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentLeaderboard()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;" title="Refresh Rankings">🔄 Refresh</button>
+        </div>
       </div>
-      <section class="card">
-        <div class="section-heading"><div><p class="eyebrow">CLASS UPDATES</p><h2>Notifications</h2></div><span class="badge badge-blue">Official</span></div>
-        <div id="classScheduleNotifications" aria-live="polite"></div>
-        <!-- ACADEMIC LEADERBOARD (COLLAPSIBLE BUTTON) -->
-        <div style="margin-top:1.5rem;">
-          <button type="button" class="collapse-toggle-btn expanded" id="toggleStudentLeaderboardBtn" onclick="toggleDashboardSection('studentLeaderboardContent', 'toggleStudentLeaderboardBtn', 'Academic Leaderboard & Rankings', '🏆')">
-            <span class="toggle-btn-left">
-              <span class="toggle-icon">🏆</span>
-              <span>
-                <strong>Academic Leaderboard & Rankings</strong>
-                <small>Track your standing, points summation, and immediate peers</small>
-              </span>
-            </span>
-            <span class="toggle-indicator">▼ Hide Academic Leaderboard & Rankings</span>
-          </button>
-          <div id="studentLeaderboardContent" class="collapsible-content" style="display:block; margin-top:1rem;">
-        <!-- ACADEMIC LEADERBOARD HUB -->
-        <div class="section-heading" style="margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+
+      <section class="card" style="margin-top:1rem;">
+        <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
           <div>
             <p class="eyebrow" id="studentLeaderboardEyebrow">ACADEMIC MERIT & RANKINGS</p>
             <h2 id="studentLeaderboardTitle" style="display:flex; align-items:center; gap:.5rem;">🏆 Academic Leaderboard</h2>
-          </div>
-          <div style="display:flex; align-items:center; gap:.5rem;">
-            <span class="badge badge-green" id="studentLeaderboardTotalBadge">Standings Active</span>
-            <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentLeaderboard()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;" title="Refresh Rankings">🔄 Refresh</button>
           </div>
         </div>
         <p class="section-description" id="studentLeaderboardDescription">
@@ -4091,9 +4198,7 @@
         </p>
 
         <!-- STUDENT'S OWN STANDING & PROXIMITY CARD -->
-        <div id="studentStandingContainer" style="margin-bottom:1.25rem;">
-          <!-- Dynamically populated by SchoolView.renderStudentLeaderboard -->
-        </div>
+        <div id="studentStandingContainer" style="margin-bottom:1.25rem;"></div>
 
         <!-- FILTERS & SEARCH BAR -->
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem; margin-bottom:.85rem;">
@@ -4132,16 +4237,28 @@
             </tbody>
           </table>
         </div>
-          </div>
+      </section>
+    </section>
+
+    <!-- DEDICATED STUDENT PAGE: OFFICIAL SCHOOL NOTICES -->
+    <section class="workspace-page hidden" id="page-notices">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Official School Notices & Bulletins Hub</strong>
         </div>
-        <div class="section-heading" style="margin-top:1.5rem; display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <span class="badge badge-blue" id="studentNoticesCountBadge">0 Notices</span>
+          <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentNotices()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;">🔄 Refresh</button>
+        </div>
+      </div>
+
+      <section class="card" style="margin-top:1rem;">
+        <div class="section-heading">
           <div>
             <p class="eyebrow">ADMINISTRATIVE BULLETINS</p>
-            <h2>📢 Official School Notices</h2>
-          </div>
-          <div style="display:flex; align-items:center; gap:.5rem;">
-            <span class="badge badge-blue" id="studentNoticesCountBadge">0 Notices</span>
-            <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentNotices()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;">🔄 Refresh</button>
+            <h2>📢 Official School Notices & Directives</h2>
           </div>
         </div>
         <p class="section-description">Official announcements, examination schedules, circulars, and administrative circulars published for students.</p>
@@ -4585,6 +4702,11 @@
               <span class="ws-icon">💳</span>
               <span class="ws-text">My Salary & Remittance</span>
             </button>
+            <button type="button" class="ws-dropdown-link" data-staff-page="notices" onclick="selectStaffWorkspaceDropdownItem('notices')">
+              <span class="ws-icon">📢</span>
+              <span class="ws-text">Notices & Bulletins</span>
+              <span class="badge badge-blue" style="margin-left:auto; font-size:.65rem; padding:.15rem .45rem;" id="staffNoticesMenuBadge">Circulars</span>
+            </button>
             <button type="button" class="ws-dropdown-link" data-staff-page="chat" onclick="selectStaffWorkspaceDropdownItem('chat')">
               <span class="ws-icon">💬</span>
               <span class="ws-text">School Chat & DMs</span>
@@ -4598,6 +4720,14 @@
         <span class="school-term" id="staffTermLabel">Teaching Workspace • Term Active</span>
       </div>
     </div>
+  </div>
+
+  <!-- TOP PORTAL NOTIFICATION & BULLETIN BANNER (STAFF) -->
+  <div id="staffTopNotificationCenter" class="top-notification-center" aria-live="polite" style="padding: 0 1.5rem; margin-top: 1rem;">
+    <!-- Live Class Notification Alert -->
+    <div id="staffLiveClassAlert" aria-live="polite"></div>
+    <!-- Official Staff Notices & Bulletins Top Alert Bar -->
+    <div id="staffTopNoticesBanner" class="top-notices-banner" aria-live="polite"></div>
   </div>
 
   <!-- STAFF SCHOOL WORKSPACE (UNIFIED NATIONAL QUESTION BANK & CBT TEST BUILDER) -->
@@ -4868,22 +4998,6 @@
         </div>
       </section>
     </div>
-  <section class="card" style="margin-bottom:1rem;" id="staffNoticesCard">
-    <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <p class="eyebrow">ADMINISTRATIVE BULLETINS</p>
-        <h2>📢 Staff Circulars & Updates</h2>
-      </div>
-      <div style="display:flex; align-items:center; gap:.5rem;">
-        <span class="badge badge-blue" id="staffNoticesCountBadge">0 Updates</span>
-        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStaffNotices()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;">🔄 Refresh</button>
-      </div>
-    </div>
-    <p class="section-description">Internal administrative notices, curriculum deadlines, guidelines, and directives published specifically for academic and administrative staff.</p>
-    <div id="staffNotifications" aria-live="polite" style="display:grid; gap:.85rem; margin-top:.75rem;">
-      <div class="empty-state">Loading staff updates...</div>
-    </div>
-  </section>
 
     <!-- FACULTY FEATURE HUB & WORKSPACE SHORTCUTS -->
     <div style="margin-top:1.5rem;">
@@ -4948,6 +5062,15 @@
           <span class="feature-hub-action">Inspect Payroll →</span>
         </div>
 
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('notices')">
+          <div>
+            <div class="feature-hub-icon">📢</div>
+            <h3 class="feature-hub-title">Notices & Bulletins Hub</h3>
+            <p class="feature-hub-desc">Internal administrative notices, curriculum deadlines, circulars, and directives published for staff.</p>
+          </div>
+          <span class="feature-hub-action">Read Circulars →</span>
+        </div>
+
         <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('leaderboard')">
           <div>
             <div class="feature-hub-icon">🏆</div>
@@ -4974,6 +5097,8 @@
           </div>
           <span class="feature-hub-action">Open Chat →</span>
         </div>
+      </div>
+    </div>
       </div>
     </div>
   </div> <!-- /#staffPage-overview -->
@@ -5415,6 +5540,34 @@
       </div>
     </section>
   </div>
+
+  <!-- STAFF PAGE: NOTICES & CIRCULARS -->
+  <div id="staffPage-notices" class="staff-workspace-page hidden" style="display:none; margin-bottom:2rem;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Staff Circulars & Administrative Bulletins</strong>
+      </div>
+      <span class="badge badge-blue">Official Directives</span>
+    </div>
+    <section class="card" id="staffNoticesCard">
+      <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <p class="eyebrow">ADMINISTRATIVE BULLETINS</p>
+          <h2>📢 Staff Circulars & Updates</h2>
+        </div>
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <span class="badge badge-blue" id="staffNoticesCountBadge">0 Updates</span>
+          <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStaffNotices()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;">🔄 Refresh</button>
+        </div>
+      </div>
+      <p class="section-description">Internal administrative notices, curriculum deadlines, guidelines, and directives published specifically for academic and administrative staff.</p>
+      <div id="staffNotifications" aria-live="polite" style="display:grid; gap:.85rem; margin-top:.75rem;">
+        <div class="empty-state">Loading staff updates...</div>
+      </div>
+    </section>
+  </div>
   </div> <!-- /#staffMainContent -->
 </div>
 
@@ -5524,6 +5677,12 @@
         <span class="school-term" id="adminTermLabel">School Administrator • Control Centre</span>
       </div>
     </div>
+  </div>
+
+  <!-- TOP PORTAL NOTIFICATION & BULLETIN BANNER (ADMIN) -->
+  <div id="adminTopNotificationCenter" class="top-notification-center" aria-live="polite" style="padding: 0 1.5rem; margin-top: 1rem;">
+    <!-- Official Admin Notices & Bulletins Top Alert Bar -->
+    <div id="adminTopNoticesBanner" class="top-notices-banner" aria-live="polite"></div>
   </div>
 
   <!-- ADMIN SCHOOL WORKSPACE (MULTI-API CBT ENGINE, PROVIDERS, PERMISSIONS & SETTINGS) -->

@@ -3469,11 +3469,12 @@ const schoolController = {
   /* REAL-TIME LIVE SYNC (NO MANUAL REFRESH) */
   startPortalLiveSync() {
     this.stopPortalLiveSync();
+    // 5-second automatic sync interval for instant upload and log reflections
     this._liveSyncTimer = setInterval(() => {
       this.runLiveSyncTick();
-    }, 9000);
-    // Initial sync tick after 3.5 seconds
-    setTimeout(() => this.runLiveSyncTick(), 3500);
+    }, 5000);
+    // Initial sync tick after 2 seconds
+    setTimeout(() => this.runLiveSyncTick(), 2000);
   },
 
   stopPortalLiveSync() {
@@ -3497,37 +3498,79 @@ const schoolController = {
       const prev = this._lastLiveSyncState;
       const role = schoolModel.user.role;
 
-      // 1. Admin Live Sync: New student registrations or payment verifications
+      // 1. Automatic refresh for Official Notices & Bulletins (All Portals)
+      if (sync.latest_notice_id && sync.latest_notice_id !== prev.latest_notice_id) {
+        if (role === 'student') this.loadStudentNotices();
+        else if (role === 'staff') this.loadStaffNotices();
+        else if (role === 'admin') this.loadAdminNotices();
+      }
+
+      // 2. Automatic refresh for Educational Resources & Uploads (All Portals)
+      if (sync.latest_resource_id && sync.latest_resource_id !== prev.latest_resource_id) {
+        if (role === 'student') {
+          this.loadStudentTextbooks();
+          this.loadStudentPastQuestions();
+        } else if (role === 'staff') {
+          this.loadStaffResources();
+        } else if (role === 'admin') {
+          this.loadAdminResources();
+        }
+      }
+
+      // 3. Automatic refresh for Assignments & Tasks
+      if (sync.latest_assignment_id && sync.latest_assignment_id !== prev.latest_assignment_id) {
+        if (role === 'student') this.loadStudentAssignments();
+        else if (role === 'staff') this.loadStaffAssignments();
+      }
+
+      // 4. Automatic refresh for Coursework Submissions & Scoresheets
+      if (sync.latest_submission_id && sync.latest_submission_id !== prev.latest_submission_id) {
+        if (role === 'staff') {
+          this.loadStaffSubmissions();
+          this.loadStaffScoresheet();
+        } else if (role === 'admin') {
+          this.loadAdminScoresheet();
+        } else if (role === 'student') {
+          this.loadStudentAssignments();
+          this.loadStudentLeaderboard();
+        }
+      }
+
+      // 5. Automatic refresh for Admin Audit Logs
+      if (role === 'admin' && sync.latest_audit_id && sync.latest_audit_id !== prev.latest_audit_id) {
+        this.loadAuditLogs();
+      }
+
+      // 6. Automatic refresh for Financial Ledger & Fee Transactions
+      if (role === 'admin' && ((sync.latest_ledger_id && sync.latest_ledger_id !== prev.latest_ledger_id) || (sync.latest_payment_id && sync.latest_payment_id !== prev.latest_payment_id))) {
+        this.loadFinancialLedger();
+        this.loadAdminAnalytics();
+      }
+
+      // 7. Automatic refresh for Student Registrations & Payment Verifications (Admin)
       if (role === 'admin') {
-        const studentChanged = (sync.latest_student_id && sync.latest_student_id !== prev.latest_student_id);
+        const studentChanged = (sync.latest_student_id && sync.latest_student_id !== prev.latest_student_id) || (sync.total_students !== prev.total_students);
         const verifChanged = (Number(sync.pending_verifications) !== Number(prev.pending_verifications));
 
         if (studentChanged || verifChanged) {
-          this.showToast('🔔 Live Update: New student registration or payment verification pending!', 'info');
           this.loadAdminStudents();
           this.loadAdminStudentVerifications();
           this.loadAdminAnalytics();
         }
       }
 
-      // 2. Staff Live Sync: New assignment submissions
-      if (role === 'staff') {
-        const submissionsChanged = (Number(sync.total_submissions) !== Number(prev.total_submissions));
-        if (submissionsChanged && Number(sync.total_submissions) > Number(prev.total_submissions)) {
-          this.showToast('📥 Live Update: New student coursework submission received!', 'info');
-          this.loadStaffAssignments();
-          this.loadStaffScoresheet();
-        }
+      // 8. Automatic refresh for Staff Payroll / Disbursements (Admin & Staff)
+      if (sync.latest_payroll_id && sync.latest_payroll_id !== prev.latest_payroll_id) {
+        if (role === 'admin') this.loadAdminPayrollInfo();
+        if (role === 'staff') this.loadStaffPayrollInfo();
       }
 
-      // 3. Student Live Sync: Automatic tuition fee unlock
+      // 9. Student Live Unlock upon Payment Verification
       if (role === 'student') {
-        if (sync.student_payment_status && sync.student_payment_status !== prev.student_payment_status) {
-          if (sync.student_payment_status === 'paid_monthly' || sync.student_payment_status === 'paid_weekly') {
-            this.showToast('🎉 Live Update: Your tuition payment has been verified! Unlocking portal...', 'success');
-            schoolModel.user.fee_status = sync.student_payment_status;
-            SchoolView.initializeStudent();
-          }
+        if (sync.is_paid && !prev.is_paid) {
+          this.showToast('🎉 Live Update: Your tuition payment has been verified! Unlocking portal...', 'success');
+          schoolModel.user.is_paid = 1;
+          SchoolView.initializeStudent();
         }
       }
 

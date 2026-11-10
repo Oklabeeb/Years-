@@ -736,6 +736,7 @@ if (!window._subjectChoicesListenerAdded) {
 // 3. Workspace Navigation (Student Portal)
 window.openWorkspace = async function(pageId, triggerEl) {
   SchoolView.switchWorkspacePage(pageId, triggerEl);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (pageId === 'school') {
     await schoolController.loadAlocSchool('student');
@@ -745,23 +746,22 @@ window.openWorkspace = async function(pageId, triggerEl) {
     await schoolController.loadStudentTextbooks();
   } else if (pageId === 'assignments') {
     await schoolController.loadStudentAssignments();
-    await schoolController.loadStudentLeaderboard();
   } else if (pageId === 'examinations') {
     const subs = schoolModel.studentEnrolledSubjects || [];
     const prog = (schoolModel.user && schoolModel.user.program) || 'WAEC';
     SchoolView.renderStudentExaminations(subs, prog);
   } else if (pageId === 'leaderboard') {
-    const lbContent = document.getElementById('studentLeaderboardContent');
-    if (lbContent && (lbContent.style.display === 'none' || lbContent.classList.contains('hidden'))) {
-      toggleDashboardSection('studentLeaderboardContent', 'toggleStudentLeaderboardBtn', 'Academic Leaderboard & Rankings', '🏆');
-    }
     await schoolController.loadStudentLeaderboard();
-    const el = document.getElementById('toggleStudentLeaderboardBtn');
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else if (pageId === 'analytics') {
+    await schoolController.loadStudentAnalytics();
+  } else if (pageId === 'notices') {
+    await schoolController.loadStudentNotices();
   } else if (pageId === 'timetable') {
     await schoolController.loadStudentTimetable();
   } else if (pageId === 'chat') {
     await schoolController.openCampusChat('studentChatMount');
+  } else if (pageId === 'attendance') {
+    await schoolController.loadStudentAttendance();
   }
 };
 
@@ -1283,6 +1283,8 @@ window.selectStaffWorkspaceDropdownItem = async function(pageId) {
       await schoolController.loadStaffPayrollInfo();
     } else if (pageId === 'leaderboard') {
       await schoolController.loadStaffLeaderboard();
+    } else if (pageId === 'notices') {
+      await schoolController.loadStaffNotices();
     } else if (pageId === 'overview') {
       await schoolController.loadStaffLeaderboard();
       await schoolController.loadStaffAssignments();

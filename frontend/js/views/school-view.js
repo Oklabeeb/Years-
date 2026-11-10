@@ -62,6 +62,7 @@ const SchoolView = {
     await schoolController.loadAdminPaystackSettings();
     await schoolController.loadAlocSchool('admin');
     await schoolController.loadAdminAnalytics();
+    await schoolController.loadAdminNotices();
   },
 
   /* ------------------------------------------------------------------------
@@ -139,6 +140,7 @@ const SchoolView = {
     await schoolController.loadStaffSubmissions();
     await schoolController.loadStaffScoresheet();
     await schoolController.loadStaffPayrollInfo();
+    await schoolController.loadStaffNotices();
 
     // Calculate pending grading submissions and subject mastery stats
     const submissions = schoolModel.staffSubmissions || [];
@@ -338,7 +340,11 @@ const SchoolView = {
       assignments: 'Assignments',
       courses: 'My Subjects',
       pastquestions: 'Past Questions',
-      textbooks: 'Textbooks'
+      textbooks: 'Textbooks',
+      leaderboard: 'Academic Leaderboard & Rankings',
+      analytics: 'Academic Analytics & Exam Insights',
+      notices: 'Official School Notices',
+      chat: 'Campus Chat & DMs'
     };
     const activeTitle = titles[pageId] || 'Dashboard';
 
@@ -397,7 +403,8 @@ const SchoolView = {
       scoresheet: 'General Score Sheet',
       resources: 'Learning Resources Repository',
       payroll: 'My Salary & Remittance',
-      leaderboard: 'Student Leaderboard'
+      leaderboard: 'Student Leaderboard',
+      notices: 'Notices & Bulletins Hub'
     };
     const activeTitle = titles[pageId] || 'Dashboard Overview';
 
@@ -1278,6 +1285,35 @@ const SchoolView = {
     const tbody = this.element('staffTimetableRows');
     const badge = this.element('staffTimetableCountBadge');
     if (badge) badge.textContent = `${schedules.length} Scheduled Class${schedules.length === 1 ? '' : 'es'}`;
+
+    const staffAlertEl = this.element('staffLiveClassAlert');
+    if (staffAlertEl) {
+      const todayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const todayDay = todayNames[new Date().getDay()];
+      const todayClasses = Array.isArray(schedules) ? schedules.filter(s => s.day_of_week === todayDay && s.meet_link) : [];
+      if (todayClasses.length > 0) {
+        const cls = todayClasses[0];
+        staffAlertEl.innerHTML = `
+          <div class="google-meet-card live-pulse" style="margin-bottom:0.75rem;">
+            <div>
+              <div class="live-tag"><span>●</span> LIVE GOOGLE MEET CLASS TODAY</div>
+              <h3 style="margin:0.25rem 0 0.2rem; font-size:1.05rem;">
+                ${this.escapeHtml(cls.subject)} (${this.escapeHtml(cls.start_time)} - ${this.escapeHtml(cls.end_time)})
+              </h3>
+              <p style="margin:0; font-size:.85rem; color:var(--muted); line-height:1.5;">
+                Class venue: ${this.escapeHtml(cls.room || 'Online Video Class')} • ${cls.notification_sent_at ? 'Students alerted' : 'Reminder active'}
+              </p>
+            </div>
+            <a href="${cls.meet_link}" target="_blank" rel="noopener noreferrer" class="google-meet-btn">
+              <span>📹</span> Start Video Class (Google Meet)
+            </a>
+          </div>
+        `;
+      } else {
+        staffAlertEl.innerHTML = '';
+      }
+    }
+
     if (!tbody) return;
 
     if (!Array.isArray(schedules) || schedules.length === 0) {
@@ -5338,7 +5374,56 @@ const SchoolView = {
     `;
   },
 
+  renderTopNoticeBanner(notices = [], targetType = 'student') {
+    const bannerId = targetType === 'student' ? 'studentTopNoticesBanner' : (targetType === 'staff' ? 'staffTopNoticesBanner' : 'adminTopNoticesBanner');
+    const el = this.element(bannerId);
+    if (!el) return;
+
+    if (!Array.isArray(notices) || notices.length === 0) {
+      el.innerHTML = '';
+      el.style.display = 'none';
+      return;
+    }
+
+    el.style.display = 'block';
+    const topNotice = notices.find(n => Number(n.is_pinned) === 1) || notices[0];
+    const isUrgent = topNotice.category === 'urgent';
+    const otherCount = notices.length - 1;
+
+    const navAction = targetType === 'student' 
+      ? `openWorkspace('notices')` 
+      : (targetType === 'staff' ? `selectStaffWorkspaceDropdownItem('notices')` : `selectAdminWorkspaceDropdownItem('notices')`);
+
+    el.innerHTML = `
+      <div class="top-notice-alert-bar ${isUrgent ? 'urgent' : ''}" style="display:flex; align-items:center; justify-content:space-between; gap:.85rem; padding:.65rem 1rem; border-radius:12px; margin-bottom:1rem; background:${isUrgent ? 'linear-gradient(90deg, rgba(239,68,68,0.12), rgba(245,158,11,0.08))' : 'linear-gradient(90deg, rgba(59,130,246,0.10), rgba(16,185,129,0.07))'}; border:1.5px solid ${isUrgent ? '#ef4444' : '#3b82f6'};">
+        <div style="display:flex; align-items:center; gap:.75rem; flex:1; min-width:0;">
+          <span style="font-size:1.35rem; line-height:1;">${isUrgent ? '🚨' : '📢'}</span>
+          <div style="min-width:0; flex:1;">
+            <div style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">
+              <span class="badge ${isUrgent ? 'badge-red' : 'badge-blue'}" style="font-size:.68rem; padding:.15rem .45rem; font-weight:800; text-transform:uppercase;">
+                ${isUrgent ? 'Urgent Alert' : 'School Bulletin'}
+              </span>
+              <strong style="font-size:.88rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${this.escapeHtml(topNotice.title)}
+              </strong>
+            </div>
+            <p style="margin:.15rem 0 0; font-size:.78rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:850px;">
+              ${this.escapeHtml(topNotice.content)}
+            </p>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:.55rem; flex-shrink:0;">
+          ${otherCount > 0 ? `<span class="badge badge-gold" style="font-size:.7rem; padding:.2rem .5rem;">+${otherCount} more</span>` : ''}
+          <button type="button" class="btn-sm btn-primary" onclick="${navAction}" style="padding:.32rem .75rem; font-size:.75rem; font-weight:750; border-radius:8px; white-space:nowrap; cursor:pointer;">
+            View All Bulletins →
+          </button>
+        </div>
+      </div>
+    `;
+  },
+
   renderStudentNotices(notices = []) {
+    this.renderTopNoticeBanner(notices, 'student');
     const container = this.element('studentSchoolNoticesContainer');
     const badge = this.element('studentNoticesCountBadge');
     if (badge) {
@@ -5390,6 +5475,7 @@ const SchoolView = {
   },
 
   renderStaffNotices(notices = []) {
+    this.renderTopNoticeBanner(notices, 'staff');
     const container = this.element('staffNotifications');
     const badge = this.element('staffNoticesCountBadge');
     if (badge) {
@@ -5441,6 +5527,7 @@ const SchoolView = {
   },
 
   renderAdminNotices(notices = [], counts = {}, activeAudience = 'all') {
+    this.renderTopNoticeBanner(notices, 'admin');
     const tbody = this.element('adminNoticesRows');
     const countAll = this.element('adminNoticeCountAll');
     const countStudent = this.element('adminNoticeCountStudent');

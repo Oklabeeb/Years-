@@ -1211,29 +1211,55 @@ if ($action === 'live_sync') {
         'timestamp' => time()
     ];
 
+    // Common activity & upload change markers (instant auto-refresh across all portals)
+    try {
+        $syncData['latest_resource_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM resources")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_resource_id'] = 0; }
+
+    try {
+        $syncData['latest_assignment_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM assignments")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_assignment_id'] = 0; }
+
+    try {
+        $syncData['latest_submission_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM submissions")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_submission_id'] = 0; }
+
+    try {
+        $syncData['latest_notice_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM school_notices")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_notice_id'] = 0; }
+
+    try {
+        $syncData['latest_audit_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM audit_logs")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_audit_id'] = 0; }
+
+    try {
+        $syncData['latest_ledger_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM financial_ledger")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_ledger_id'] = 0; }
+
+    try {
+        $syncData['latest_payment_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM payments")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_payment_id'] = 0; }
+
+    try {
+        $syncData['latest_payroll_id'] = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM staff_payroll_disbursements")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_payroll_id'] = 0; }
+
     if ($myRole === 'admin') {
         // Admin metrics: student registrations, pending verifications
         $stCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'")->fetchColumn();
+        $latestStId = (int)$pdo->query("SELECT COALESCE(MAX(id), 0) FROM users WHERE role = 'student'")->fetchColumn();
         $pendingVerifs = 0;
         try {
             $pendingVerifs = (int)$pdo->query("SELECT COUNT(*) FROM student_verification_requests WHERE status = 'pending'")->fetchColumn();
         } catch (Throwable $e) {}
         
-        $latestSt = $pdo->query("SELECT id, name, email, student_id, created_at FROM users WHERE role = 'student' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-
         $syncData['total_students'] = $stCount;
+        $syncData['latest_student_id'] = $latestStId;
         $syncData['pending_verifications'] = $pendingVerifs;
-        $syncData['latest_student'] = $latestSt ?: null;
 
     } else if ($myRole === 'staff') {
         // Staff metrics: coursework submissions
-        $subCount = 0;
-        try {
-            $subCount = (int)$pdo->query("SELECT COUNT(*) FROM coursework_submissions")->fetchColumn();
-            $latestSub = $pdo->query("SELECT id, assignment_id, student_id, submitted_at FROM coursework_submissions ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
-            $syncData['latest_submission'] = $latestSub ?: null;
-        } catch (Throwable $e) {}
-        $syncData['total_submissions'] = $subCount;
+        $syncData['total_submissions'] = $syncData['latest_submission_id'];
 
     } else if ($myRole === 'student') {
         // Student status check
