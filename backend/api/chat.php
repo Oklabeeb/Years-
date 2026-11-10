@@ -69,14 +69,18 @@ if ($myRole === 'student') {
 // ==========================================================================
 if ($action === 'get_sidebar') {
     try {
-        // 1. General Group Summary
-        $stmtGen = $pdo->query("
+        $myPattern = '%,' . $myId . ',%';
+
+        // 1. General Group Summary (excluding messages deleted for current user)
+        $stmtGen = $pdo->prepare("
             SELECT m.id, m.message, m.created_at, u.name AS sender_name, u.role AS sender_role
             FROM chat_messages m
             JOIN users u ON m.sender_id = u.id
             WHERE m.channel_type = 'group' AND m.channel_name = 'general' AND m.deleted_at IS NULL
+              AND (m.deleted_for_users IS NULL OR CONCAT(',', m.deleted_for_users, ',') NOT LIKE ?)
             ORDER BY m.id DESC LIMIT 1
         ");
+        $stmtGen->execute([$myPattern]);
         $lastGeneral = $stmtGen->fetch(PDO::FETCH_ASSOC);
 
         $totalMembersStmt = $pdo->query("SELECT COUNT(*) FROM users");
@@ -113,9 +117,10 @@ if ($action === 'get_sidebar') {
             SELECT sender_id, COUNT(*) AS unread_count
             FROM chat_messages
             WHERE recipient_id = ? AND channel_type = 'direct' AND is_read = 0 AND deleted_at IS NULL
+              AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
             GROUP BY sender_id
         ");
-        $unreadStmt->execute([$myId]);
+        $unreadStmt->execute([$myId, $myPattern]);
         $unreadMap = [];
         while ($row = $unreadStmt->fetch(PDO::FETCH_ASSOC)) {
             $unreadMap[$row['sender_id']] = (int)$row['unread_count'];
@@ -131,10 +136,11 @@ if ($action === 'get_sidebar') {
                 FROM chat_messages
                 WHERE channel_type = 'direct' AND deleted_at IS NULL
                   AND (sender_id = ? OR recipient_id = ?)
+                  AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
                 GROUP BY IF(sender_id = ?, recipient_id, sender_id)
             ) latest ON m.id = latest.max_id
         ");
-        $lastDmStmt->execute([$myId, $myId, $myId, $myId]);
+        $lastDmStmt->execute([$myId, $myId, $myId, $myPattern, $myId]);
         $lastDmMap = [];
         while ($dm = $lastDmStmt->fetch(PDO::FETCH_ASSOC)) {
             $lastDmMap[$dm['other_user_id']] = [
@@ -200,6 +206,8 @@ if ($action === 'get_messages') {
         if ($type === 'group') {
             $channelName = preg_replace('/[^a-zA-Z0-9_-]/', '', $target) ?: 'general';
 
+            $myPattern = '%,' . $myId . ',%';
+
             $sql = "
                 SELECT m.id, m.sender_id, m.recipient_id, m.channel_type, m.channel_name,
                        m.message, m.is_read, m.created_at,
@@ -207,8 +215,12 @@ if ($action === 'get_messages') {
                 FROM chat_messages m
                 JOIN users u ON m.sender_id = u.id
                 WHERE m.channel_type = 'group' AND m.channel_name = :target AND m.deleted_at IS NULL
+                  AND (m.deleted_for_users IS NULL OR CONCAT(',', m.deleted_for_users, ',') NOT LIKE :myPattern)
             ";
-            $params = [':target' => $channelName];
+            $params = [
+                ':target' => $channelName,
+                ':myPattern' => $myPattern
+            ];
 
             if ($lastId > 0) {
                 $sql .= " AND m.id > :last_id";
@@ -273,7 +285,9 @@ if ($action === 'get_messages') {
                 exit;
             }
 
-            // Fetch direct messages between the two users
+            // Fetch direct messages between the two users (excluding messages deleted for current user)
+            $myPattern = '%,' . $myId . ',%';
+
             $sql = "
                 SELECT m.id, m.sender_id, m.recipient_id, m.channel_type, m.channel_name,
                        m.message, m.is_read, m.created_at,
@@ -286,8 +300,9 @@ if ($action === 'get_messages') {
                     OR
                     (m.sender_id = ? AND m.recipient_id = ?)
                   )
+                  AND (m.deleted_for_users IS NULL OR CONCAT(',', m.deleted_for_users, ',') NOT LIKE ?)
             ";
-            $params = [$myId, $recipientId, $recipientId, $myId];
+            $params = [$myId, $recipientId, $recipientId, $myId, $myPattern];
 
             if ($lastId > 0) {
                 $sql .= " AND m.id > ?";
@@ -474,13 +489,14 @@ if ($action === 'send_message') {
 }
 
 // ==========================================================================
-// ACTION: DELETE MESSAGE
+// ACTION: DELETE MESSAGE (FOR ME OR FOR EVERYONE)
 // ==========================================================================
 if ($action === 'delete_message') {
     $rawInput = file_get_contents('php://input');
     $json = !empty($rawInput) ? json_decode($rawInput, true) : null;
     $input = (is_array($json) && !empty($json)) ? $json : $_POST;
     $msgId = (int)($input['message_id'] ?? 0);
+    $deleteMode = trim($input['delete_mode'] ?? 'for_everyone'); // 'for_me' or 'for_everyone'
 
     if ($msgId <= 0) {
         http_response_code(400);
@@ -489,7 +505,7 @@ if ($action === 'delete_message') {
     }
 
     try {
-        $st = $pdo->prepare("SELECT id, sender_id, channel_type FROM chat_messages WHERE id = ? AND deleted_at IS NULL");
+        $st = $pdo->prepare("SELECT id, sender_id, recipient_id, channel_type, deleted_for_users FROM chat_messages WHERE id = ? AND deleted_at IS NULL");
         $st->execute([$msgId]);
         $msg = $st->fetch(PDO::FETCH_ASSOC);
 
@@ -499,19 +515,130 @@ if ($action === 'delete_message') {
             exit;
         }
 
-        // Permissions: Admin can delete any message; other users can delete only their own
-        if ($myRole !== 'admin' && (int)$msg['sender_id'] !== $myId) {
-            http_response_code(403);
-            echo json_encode(['success' => false, 'message' => 'Permission denied. You can only delete your own messages.']);
+        $isAuthor = ((int)$msg['sender_id'] === $myId);
+        $isAdmin = ($myRole === 'admin');
+
+        if ($deleteMode === 'for_me') {
+            // Delete for me: hides message only for the current user
+            $myIdStr = (string)$myId;
+            $myPattern = '%,' . $myId . ',%';
+            $del = $pdo->prepare("
+                UPDATE chat_messages 
+                SET deleted_for_users = CASE 
+                    WHEN deleted_for_users IS NULL OR deleted_for_users = '' THEN ? 
+                    WHEN CONCAT(',', deleted_for_users, ',') LIKE ? THEN deleted_for_users
+                    ELSE CONCAT(deleted_for_users, ',', ?) 
+                END
+                WHERE id = ?
+            ");
+            $del->execute([$myIdStr, $myPattern, $myIdStr, $msgId]);
+
+            echo json_encode(['success' => true, 'delete_mode' => 'for_me', 'message' => 'Message deleted for you.']);
+            exit;
+        } else {
+            // Delete for everyone:
+            // Allowed if user sent the message, OR if user is an Administrator!
+            if (!$isAuthor && !$isAdmin) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'message' => 'Permission denied. You can only delete your own messages for everyone. You may use "Delete for me" instead.']);
+                exit;
+            }
+
+            $del = $pdo->prepare("UPDATE chat_messages SET deleted_at = NOW() WHERE id = ?");
+            $del->execute([$msgId]);
+
+            echo json_encode(['success' => true, 'delete_mode' => 'for_everyone', 'message' => 'Message deleted for everyone.']);
             exit;
         }
 
-        $del = $pdo->prepare("UPDATE chat_messages SET deleted_at = NOW() WHERE id = ?");
-        $del->execute([$msgId]);
-
-        echo json_encode(['success' => true, 'message' => 'Message deleted successfully.']);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
         exit;
+    }
+}
 
+// ==========================================================================
+// ACTION: CLEAR CHAT (IN OWN DMS FOR ME OR IN COMMUNITY GROUP BY ADMIN)
+// ==========================================================================
+if ($action === 'clear_chat') {
+    $rawInput = file_get_contents('php://input');
+    $json = !empty($rawInput) ? json_decode($rawInput, true) : null;
+    $input = (is_array($json) && !empty($json)) ? $json : $_POST;
+
+    $type = $input['type'] ?? 'direct'; // 'direct' or 'group'
+    $target = $input['target'] ?? '';
+    $clearMode = $input['clear_mode'] ?? 'for_me'; // 'for_me' or 'for_everyone'
+
+    try {
+        if ($type === 'direct') {
+            $otherUserId = (int)$target;
+            if ($otherUserId <= 0) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'message' => 'Invalid chat user ID.']);
+                exit;
+            }
+
+            // In DMs, clear chat from "their end and not the other end" (for_me)
+            $myIdStr = (string)$myId;
+            $myPattern = '%,' . $myId . ',%';
+
+            $stmt = $pdo->prepare("
+                UPDATE chat_messages 
+                SET deleted_for_users = CASE 
+                    WHEN deleted_for_users IS NULL OR deleted_for_users = '' THEN ? 
+                    WHEN CONCAT(',', deleted_for_users, ',') LIKE ? THEN deleted_for_users
+                    ELSE CONCAT(deleted_for_users, ',', ?) 
+                END
+                WHERE channel_type = 'direct' 
+                  AND deleted_at IS NULL
+                  AND ((sender_id = ? AND recipient_id = ?) OR (sender_id = ? AND recipient_id = ?))
+            ");
+            $stmt->execute([$myIdStr, $myPattern, $myIdStr, $myId, $otherUserId, $otherUserId, $myId]);
+
+            echo json_encode(['success' => true, 'message' => 'Direct conversation cleared from your screen.']);
+            exit;
+
+        } else {
+            // Community Group
+            $channelName = preg_replace('/[^a-zA-Z0-9_-]/', '', $target) ?: 'general';
+
+            if ($clearMode === 'for_everyone') {
+                if ($myRole !== 'admin') {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'message' => 'Permission denied. Only administrators can clear the community group chat for everyone.']);
+                    exit;
+                }
+
+                $stmt = $pdo->prepare("
+                    UPDATE chat_messages 
+                    SET deleted_at = NOW() 
+                    WHERE channel_type = 'group' AND channel_name = ? AND deleted_at IS NULL
+                ");
+                $stmt->execute([$channelName]);
+
+                echo json_encode(['success' => true, 'message' => 'Community group chat has been completely cleared for everyone by Administrator.']);
+                exit;
+            } else {
+                // Clear for me in community group
+                $myIdStr = (string)$myId;
+                $myPattern = '%,' . $myId . ',%';
+
+                $stmt = $pdo->prepare("
+                    UPDATE chat_messages 
+                    SET deleted_for_users = CASE 
+                        WHEN deleted_for_users IS NULL OR deleted_for_users = '' THEN ? 
+                        WHEN CONCAT(',', deleted_for_users, ',') LIKE ? THEN deleted_for_users
+                        ELSE CONCAT(deleted_for_users, ',', ?) 
+                    END
+                    WHERE channel_type = 'group' AND channel_name = ? AND deleted_at IS NULL
+                ");
+                $stmt->execute([$myIdStr, $myPattern, $myIdStr, $channelName]);
+
+                echo json_encode(['success' => true, 'message' => 'Community group messages cleared from your screen.']);
+                exit;
+            }
+        }
     } catch (PDOException $e) {
         http_response_code(500);
         echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);

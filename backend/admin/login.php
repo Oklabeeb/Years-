@@ -80,6 +80,14 @@ if (!empty($frontendEnv)) {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25);
     }
+    .password-input-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+    .password-input-wrapper input { width: 100% !important; padding-right: 2.8rem !important; }
+    .password-toggle-btn {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; cursor: pointer; padding: 4px;
+      font-size: 1.15rem; line-height: 1; color: var(--muted); border-radius: 6px;
+    }
+    .password-toggle-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.08); }
     .btn {
       width: 100%;
       padding: 0.88rem;
@@ -144,7 +152,10 @@ if (!empty($frontendEnv)) {
 
       <div class="form-group">
         <label for="adminPassword">Password</label>
-        <input type="password" id="adminPassword" required placeholder="Enter administrative password" autocomplete="current-password">
+        <div class="password-input-wrapper">
+          <input type="password" id="adminPassword" required placeholder="Enter administrative password" autocomplete="current-password">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
       </div>
 
       <button type="submit" id="loginSubmitBtn" class="btn">Authenticate & Access</button>
@@ -173,6 +184,24 @@ if (!empty($frontendEnv)) {
   </div>
 
   <script>
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.password-toggle-btn');
+      if (!btn) return;
+      const wrap = btn.closest('.password-input-wrapper');
+      if (!wrap) return;
+      const input = wrap.querySelector('input');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+        btn.setAttribute('title', 'Hide password');
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+        btn.setAttribute('title', 'Show password');
+      }
+    });
+
     const errorAlert = document.getElementById('errorAlert');
     const infoAlert = document.getElementById('infoAlert');
     const loginForm = document.getElementById('adminLoginForm');

@@ -105,6 +105,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
     label { display: block; font-size: 0.82rem; font-weight: 700; margin-bottom: 0.4rem; color: #cbd5e1; }
     input[type="password"], input[type="text"] { width: 100%; padding: 0.75rem 0.9rem; border-radius: 8px; border: 1px solid var(--border); background: #0f172a; color: #f8fafc; font-size: 0.9rem; }
     input:focus { outline: none; border-color: var(--primary); }
+    .password-input-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+    .password-input-wrapper input { width: 100% !important; padding-right: 2.8rem !important; }
+    .password-toggle-btn {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: transparent; border: none; cursor: pointer; padding: 4px;
+      font-size: 1.15rem; line-height: 1; color: var(--muted); border-radius: 6px;
+    }
+    .password-toggle-btn:hover { color: #f8fafc; background: rgba(255,255,255,0.08); }
     .btn { width: 100%; padding: 0.85rem; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 750; cursor: pointer; transition: background 0.15s; margin-top: 0.5rem; }
     .btn:hover { background: var(--primary-hover); }
     .mfa-box { display: flex; align-items: flex-start; gap: 0.6rem; margin: 1rem 0; padding: 0.8rem; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); }
@@ -135,12 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
         
         <div class="form-group">
           <label for="password">Create Strong Password *</label>
-          <input type="password" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
+          <div class="password-input-wrapper">
+            <input type="password" id="password" name="password" required minlength="8" placeholder="At least 8 characters">
+            <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+          </div>
         </div>
 
         <div class="form-group">
           <label for="password_confirm">Confirm Password *</label>
-          <input type="password" id="password_confirm" name="password_confirm" required minlength="8" placeholder="Re-enter password">
+          <div class="password-input-wrapper">
+            <input type="password" id="password_confirm" name="password_confirm" required minlength="8" placeholder="Re-enter password">
+            <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+          </div>
         </div>
 
         <div class="mfa-box">
@@ -155,6 +169,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error)) {
       </form>
     <?php endif; ?>
   </div>
+
+  <script>
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('.password-toggle-btn');
+      if (!btn) return;
+      const wrap = btn.closest('.password-input-wrapper');
+      if (!wrap) return;
+      const input = wrap.querySelector('input');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+        btn.setAttribute('title', 'Hide password');
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+        btn.setAttribute('title', 'Show password');
+      }
+    });
+  </script>
 </body>
 </html>
 

@@ -372,7 +372,121 @@ const SchoolView = {
       titleEl.textContent = activeTitle;
     }
 
+    // Resize Chart.js canvases inside newly displayed workspace page
+    setTimeout(() => {
+      if (window._appCharts) {
+        Object.values(window._appCharts).forEach(c => {
+          try { c.resize(); } catch (e) {}
+        });
+      }
+    }, 80);
+
     // Scroll smoothly to top of the content area so view resets cleanly
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  /* Switch between dedicated pages in Staff Workspace */
+  switchStaffPage(pageId) {
+    const titles = {
+      overview: 'Dashboard Overview',
+      school: 'School (ALOC Station)',
+      chat: 'School Chat & DMs',
+      roster: 'Course Enrollment Roster',
+      assignments: 'Classwork & Assignments',
+      timetable: 'Teaching Schedule & Meet',
+      scoresheet: 'General Score Sheet',
+      resources: 'Learning Resources Repository',
+      payroll: 'My Salary & Remittance',
+      leaderboard: 'Student Leaderboard'
+    };
+    const activeTitle = titles[pageId] || 'Dashboard Overview';
+
+    document.querySelectorAll('#staffWorkspaceDropdownMenu .ws-dropdown-link').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    const activeBtn = document.querySelector(`#staffWorkspaceDropdownMenu [data-staff-page="${pageId}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const badge = this.element('staffWorkspaceActiveBadge');
+    if (badge) badge.textContent = activeTitle;
+
+    document.querySelectorAll('.staff-workspace-page').forEach(page => {
+      page.style.display = 'none';
+      page.classList.add('hidden');
+    });
+
+    const target = this.element(`staffPage-${pageId}`) || this.element(`staff${pageId.charAt(0).toUpperCase() + pageId.slice(1)}Page`);
+    if (target) {
+      target.style.display = 'block';
+      target.classList.remove('hidden');
+      target.querySelectorAll('.collapsible-content').forEach(c => {
+        c.style.display = 'block';
+      });
+    }
+
+    setTimeout(() => {
+      if (window._appCharts) {
+        Object.values(window._appCharts).forEach(c => {
+          try { c.resize(); } catch (e) {}
+        });
+      }
+    }, 100);
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  },
+
+  /* Switch between dedicated pages in Admin Workspace */
+  switchAdminPage(pageId) {
+    const titles = {
+      overview: 'Executive Dashboard Overview',
+      school: 'Curriculum Vault (ALOC Station)',
+      chat: 'Campus Chat & Governance',
+      students: 'Registered Students Directory',
+      staff: 'Staff Account Directory',
+      timetable: 'School Timetable Management',
+      scoresheet: 'General Score Sheet & Gradebook',
+      resources: 'Learning Resources Repository',
+      fees: 'School Fees & Billing',
+      payroll: 'Staff Payroll & Remittance',
+      ledger: 'Financial Record Book',
+      leaderboard: 'School-Wide Leaderboard',
+      notices: 'Notices & Bulletins Hub',
+      admins: 'Administrator Governance Hub',
+      paystack: 'Paystack Payment Gateway'
+    };
+    const activeTitle = titles[pageId] || 'Overview';
+
+    document.querySelectorAll('#adminWorkspaceDropdownMenu .ws-dropdown-link').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    const activeBtn = document.querySelector(`#adminWorkspaceDropdownMenu [data-admin-page="${pageId}"]`);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    const badge = this.element('adminWorkspaceActiveBadge');
+    if (badge) badge.textContent = activeTitle;
+
+    document.querySelectorAll('.admin-workspace-page').forEach(page => {
+      page.style.display = 'none';
+      page.classList.add('hidden');
+    });
+
+    const target = this.element(`adminPage-${pageId}`) || this.element(`admin${pageId.charAt(0).toUpperCase() + pageId.slice(1)}Page`);
+    if (target) {
+      target.style.display = 'block';
+      target.classList.remove('hidden');
+      target.querySelectorAll('.collapsible-content').forEach(c => {
+        c.style.display = 'block';
+      });
+    }
+
+    setTimeout(() => {
+      if (window._appCharts) {
+        Object.values(window._appCharts).forEach(c => {
+          try { c.resize(); } catch (e) {}
+        });
+      }
+    }, 100);
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
@@ -398,8 +512,9 @@ const SchoolView = {
         ? `<strong style="color:var(--primary); font-size:.82rem;">${res.exam || 'WAEC'}</strong> ${res.year ? `<span style="color:var(--muted); font-size:.78rem;">(${res.year})</span>` : ''}`
         : `<span style="color:var(--muted); font-size:.82rem;">${res.author ? `By ${this.escapeHtml(res.author)}` : 'Curriculum Text'}</span>`;
 
-      const fileBtn = res.file_path
-        ? `<a href="${res.file_path}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" title="Open and read document"><span>📖</span> Read / Open</a>`
+      const resolvedFilePath = res.file_path ? this.resolveAssetUrl(res.file_path) : '';
+      const fileBtn = resolvedFilePath
+        ? `<a href="${resolvedFilePath}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" title="Open and read document"><span>📖</span> Read / Open</a>`
         : '<span style="color:var(--muted); font-size:.75rem;">No file</span>';
 
       return `
@@ -438,7 +553,7 @@ const SchoolView = {
     list.innerHTML = papers.map(paper => {
       const examBadgeClass = paper.exam === 'JAMB' ? 'badge-green' : 'badge-gold';
       const yearBadge = paper.year ? `<span class="badge badge-blue">${paper.year}</span>` : '';
-      const filePath = paper.file_path || '#';
+      const filePath = paper.file_path ? this.resolveAssetUrl(paper.file_path) : '#';
 
       return `
         <div class="pq-card">
@@ -474,7 +589,7 @@ const SchoolView = {
     }
 
     list.innerHTML = books.map(book => {
-      const filePath = book.file_path || '#';
+      const filePath = book.file_path ? this.resolveAssetUrl(book.file_path) : '#';
       const authorText = book.author ? `By ${this.escapeHtml(book.author)}` : 'Approved Curriculum Material';
 
       return `
@@ -677,7 +792,7 @@ const SchoolView = {
             <strong style="font-size:.92rem; color:var(--text); display:block; margin-bottom:.25rem;">${this.escapeHtml(a.title)}</strong>
             ${descPreview ? `<p style="margin:.25rem 0 .55rem; color:var(--muted); font-size:.82rem; line-height:1.5;">${this.escapeHtml(descPreview)}</p>` : ''}
             <div style="display:flex; align-items:center; gap:.5rem; margin-top:.5rem; flex-wrap:wrap;">
-              ${hasFile ? `<a href="${a.file_path}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="font-size:.75rem;"><span>📎</span> Open Attached File</a>` : ''}
+              ${hasFile ? `<a href="${this.resolveAssetUrl(a.file_path)}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="font-size:.75rem;"><span>📎</span> Open Attached File</a>` : ''}
               <button type="button" class="btn-sm btn-sm-edit" onclick="openWorkspace('assignments', document.querySelector('.workspace-link[data-page=\\'assignments\\']'))" style="font-size:.75rem;">View Assignment Details →</button>
             </div>
           </div>
@@ -774,7 +889,7 @@ const SchoolView = {
                   <small style="color:var(--muted); font-size:.75rem; font-family:monospace;">${this.escapeHtml(a.file_path.split('/').pop())}</small>
                 </div>
               </div>
-              <a href="${a.file_path}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="padding:.5rem 1rem; text-decoration:none;">
+              <a href="${this.resolveAssetUrl(a.file_path)}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="padding:.5rem 1rem; text-decoration:none;">
                 <span>📖</span> Open & Read File
               </a>
             </div>
@@ -826,7 +941,7 @@ const SchoolView = {
                 ` : ''}
                 ${subInfo.file_path ? `
                   <div style="margin-top:.4rem; display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">
-                    <a href="${subInfo.file_path}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="background:#059669; font-size:.78rem; text-decoration:none;">
+                    <a href="${this.resolveAssetUrl(subInfo.file_path)}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="background:#059669; font-size:.78rem; text-decoration:none;">
                       <span>📎</span> View / Download Submitted Document (${this.escapeHtml(subInfo.file_path.split('/').pop())})
                     </a>
                   </div>
@@ -1442,7 +1557,8 @@ const SchoolView = {
 
       if (currentNotice && resource.file_path) {
         currentNotice.style.display = 'block';
-        currentNotice.innerHTML = `Current attachment: <a href="${resource.file_path}" target="_blank" style="color:var(--primary); font-weight:600;">${resource.file_path}</a> (upload a new file below only if you want to replace it)`;
+        const resAssetUrl = this.resolveAssetUrl(resource.file_path);
+        currentNotice.innerHTML = `Current attachment: <a href="${resAssetUrl}" target="_blank" rel="noopener noreferrer" style="color:var(--primary); font-weight:600;">${this.escapeHtml(resource.file_path.split('/').pop())}</a> (upload a new file below only if you want to replace it)`;
       } else if (currentNotice) {
         currentNotice.style.display = 'none';
       }
@@ -1693,8 +1809,9 @@ const SchoolView = {
         ? (sub.submission_content.length > 80 ? this.escapeHtml(sub.submission_content.substring(0, 80)) + '...' : this.escapeHtml(sub.submission_content))
         : '<span style="color:var(--muted); font-size:.78rem; font-style:italic;">No typed text</span>';
 
-      const fileHtml = sub.submission_file
-        ? `<a href="${sub.submission_file}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="font-size:.74rem; text-decoration:none; padding:.3rem .6rem;">📎 View File</a>`
+      const rawSubFile = sub.submission_file || sub.file_path;
+      const fileHtml = rawSubFile
+        ? `<a href="${this.resolveAssetUrl(rawSubFile)}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" style="font-size:.74rem; text-decoration:none; padding:.3rem .6rem;">📎 View File</a>`
         : '<span style="color:var(--muted); font-size:.78rem;">—</span>';
 
       const scoreHtml = isGraded
@@ -1925,7 +2042,9 @@ const SchoolView = {
     if (fileWrap && fileLink) {
       if (filePath) {
         fileWrap.style.display = 'block';
-        fileLink.href = filePath;
+        fileLink.href = this.resolveAssetUrl(filePath);
+        fileLink.target = '_blank';
+        fileLink.rel = 'noopener noreferrer';
         fileLink.textContent = `📎 View / Download Document (${filePath.split('/').pop()})`;
       } else {
         fileWrap.style.display = 'none';
@@ -4568,7 +4687,10 @@ const SchoolView = {
                   <div class="wa-chat-header-status" id="chatActiveTargetSub">${targetSub}</div>
                 </div>
               </div>
-              <div class="wa-chat-header-actions">
+              <div class="wa-chat-header-actions" style="display:flex; align-items:center; gap:.5rem;">
+                <button type="button" class="btn-sm" onclick="schoolController.handleClearChatPrompt()" title="Clear messages from chat" style="background:rgba(239,68,68,.08); color:#dc2626; border:1px solid rgba(239,68,68,.25); border-radius:8px; padding:.32rem .65rem; font-size:.75rem; font-weight:750; cursor:pointer; display:inline-flex; align-items:center; gap:.3rem;">
+                  <span>🧹</span> Clear Chat
+                </button>
                 <button type="button" class="wa-icon-action" onclick="schoolController.refreshActiveChat()" title="Refresh messages">🔄</button>
                 ${isModal ? `<button type="button" class="wa-icon-action" onclick="schoolController.closeCampusChatModal()" title="Close chat">✕</button>` : ''}
               </div>
@@ -4744,7 +4866,11 @@ const SchoolView = {
       const senderName = this.escapeHtml(m.sender_name || 'User');
       const timeStr = m.formatted_time || (m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
 
-      const canDelete = (myRole === 'admin') || isMine;
+      // Delete permission logic:
+      // - If my own message: can delete (for me or for everyone)
+      // - In direct chat (DM): can delete any message "for me"
+      // - In community group: admin can delete anyone's message; non-admin can only delete their own
+      const canDelete = isMine || (myRole === 'admin') || (!isGroup);
 
       html += `
         <div class="wa-msg-row ${isMine ? 'sent' : 'received'}" id="msg-row-${m.id}">
@@ -4757,7 +4883,7 @@ const SchoolView = {
             ` : ''}
             <p class="wa-bubble-text">${this.escapeHtml(m.message)}</p>
             <span class="wa-bubble-meta">
-              ${canDelete ? `<button type="button" class="wa-msg-delete-btn" onclick="schoolController.handleDeleteChatMessage(${m.id})" title="Delete message">🗑</button>` : ''}
+              ${canDelete ? `<button type="button" class="wa-msg-delete-btn" onclick="schoolController.promptDeleteChatMessage(${m.id}, ${isMine ? 'true' : 'false'}, ${isGroup ? 'true' : 'false'})" title="Delete message">🗑</button>` : ''}
               <span>${timeStr}</span>
               ${isMine ? `<span class="wa-double-check">✓✓</span>` : ''}
             </span>
@@ -4790,7 +4916,7 @@ const SchoolView = {
     const senderRole = (m.sender_role || 'student').toLowerCase();
     const senderName = this.escapeHtml(m.sender_name || 'User');
     const timeStr = m.formatted_time || (m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '');
-    const canDelete = (myRole === 'admin') || isMine;
+    const canDelete = isMine || (myRole === 'admin') || (!isGroup);
 
     const row = document.createElement('div');
     row.className = `wa-msg-row ${isMine ? 'sent' : 'received'}`;
@@ -4805,7 +4931,7 @@ const SchoolView = {
         ` : ''}
         <p class="wa-bubble-text">${this.escapeHtml(m.message)}</p>
         <span class="wa-bubble-meta">
-          ${canDelete ? `<button type="button" class="wa-msg-delete-btn" onclick="schoolController.handleDeleteChatMessage(${m.id})" title="Delete message">🗑</button>` : ''}
+          ${canDelete ? `<button type="button" class="wa-msg-delete-btn" onclick="schoolController.promptDeleteChatMessage(${m.id}, ${isMine ? 'true' : 'false'}, ${isGroup ? 'true' : 'false'})" title="Delete message">🗑</button>` : ''}
           <span>${timeStr}</span>
           ${isMine ? `<span class="wa-double-check">✓✓</span>` : ''}
         </span>
@@ -5202,7 +5328,7 @@ const SchoolView = {
 
     return `
       <div style="margin-top:0.75rem;">
-        <a href="${this.escapeHtml(n.attachment_url)}" target="_blank" download="${this.escapeHtml(name)}" class="notice-attachment-pill" title="Click to view or download ${this.escapeHtml(name)}">
+        <a href="${this.escapeHtml(this.resolveAssetUrl(n.attachment_url))}" target="_blank" rel="noopener noreferrer" download="${this.escapeHtml(name)}" class="notice-attachment-pill" title="Click to view or download ${this.escapeHtml(name)}">
           <span>${icon}</span>
           <span style="font-weight:750;">${this.escapeHtml(name)}</span>
           <span style="opacity:0.75; font-size:0.74rem; font-weight:600;">(${size})</span>
@@ -5352,7 +5478,7 @@ const SchoolView = {
           ? n.attachment_size
           : this.formatFileSize(n.attachment_size);
         fileCell = `
-          <a href="${this.escapeHtml(n.attachment_url)}" target="_blank" download="${this.escapeHtml(n.attachment_name || 'file')}" style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.78rem; font-weight:700; color:var(--primary); text-decoration:none;" title="Download file">
+          <a href="${this.escapeHtml(this.resolveAssetUrl(n.attachment_url))}" target="_blank" rel="noopener noreferrer" download="${this.escapeHtml(n.attachment_name || 'file')}" style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.78rem; font-weight:700; color:var(--primary); text-decoration:none;" title="Download file">
             📎 <span style="max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${this.escapeHtml(n.attachment_name || 'File')}</span>
             <span style="color:var(--muted); font-size:0.7rem; font-weight:normal;">(${size})</span>
           </a>

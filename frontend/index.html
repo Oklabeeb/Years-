@@ -3388,6 +3388,122 @@
     .launch-card { min-height: 105px; padding: 0.75rem 0.85rem; }
     .student-charts-grid { grid-template-columns: 1fr; }
   }
+
+  /* Password toggle inputs */
+  .password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+  }
+  .password-input-wrapper input {
+    width: 100% !important;
+    padding-right: 2.8rem !important;
+  }
+  .password-toggle-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: 1.15rem;
+    line-height: 1;
+    color: var(--muted, #64748b);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: color 0.15s ease, background 0.15s ease;
+    user-select: none;
+    z-index: 5;
+  }
+  .password-toggle-btn:hover {
+    color: var(--primary, #0b2d4b);
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  /* Multi-page styling for Staff and Admin dedicated pages */
+  .staff-workspace-page, .admin-workspace-page {
+    width: 100%;
+    animation: fadeInPage 0.22s ease forwards;
+  }
+  @keyframes fadeInPage {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .workspace-page-top-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    padding: 0.75rem 1.15rem;
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  }
+  .workspace-crumb {
+    font-size: 0.88rem;
+    color: var(--muted, #64748b);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .workspace-crumb strong {
+    color: var(--text, #0f172a);
+    font-weight: 750;
+  }
+  .feature-hub-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+  .feature-hub-card {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 12px;
+    padding: 1.15rem;
+    cursor: pointer;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: left;
+  }
+  .feature-hub-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    border-color: var(--primary, #0b2d4b);
+  }
+  .feature-hub-icon {
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+  .feature-hub-title {
+    font-size: 0.98rem;
+    font-weight: 800;
+    color: var(--text, #0f172a);
+    margin: 0 0 0.3rem;
+  }
+  .feature-hub-desc {
+    font-size: 0.79rem;
+    color: var(--muted, #64748b);
+    line-height: 1.45;
+    margin: 0 0 0.85rem;
+    flex: 1;
+  }
+  .feature-hub-action {
+    font-size: 0.78rem;
+    font-weight: 750;
+    color: var(--primary, #0b2d4b);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
 </style>
 </head>
 <body>
@@ -3397,6 +3513,9 @@
   <div class="logo">Years</div>
   <div class="header-actions">
     <span id="headerUser" class="header-user"></span>
+    <button type="button" class="btn-sm btn-sm-outline" id="headerChangePasswordBtn" onclick="schoolController.openChangePasswordModal()" title="Change account password" style="display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .75rem; font-size:.78rem; font-weight:750; border-radius:8px;">
+      🔑 <span>Password</span>
+    </button>
     <button type="button" class="icon-btn" id="headerChatBtn" onclick="schoolController.openCampusChatModal()" title="Campus Messenger & Direct Messages" style="position:relative;" aria-label="Campus Chat">
       💬
       <span class="chat-header-badge hidden" id="headerChatBadge">0</span>
@@ -3437,12 +3556,21 @@
         <input type="text" id="loginEmail" placeholder="you@school.edu" autocomplete="username">
       </div>
       <div class="form-group">
-        <label for="loginPassword">Password</label>
-        <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label for="loginPassword" style="margin:0;">Password</label>
+          <a href="javascript:void(0)" onclick="schoolController.openForgotPasswordModal()" style="font-size:0.78rem; color:var(--primary); font-weight:700; text-decoration:none;" id="forgotPasswordLink">Forgot Password? 🔑</a>
+        </div>
+        <div class="password-input-wrapper" style="margin-top:0.35rem;">
+          <input type="password" id="loginPassword" placeholder="Enter your password" autocomplete="current-password">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
       </div>
       <div class="form-group hidden" id="loginStaffCodeGroup">
         <label for="loginStaffCode">Staff access code</label>
-        <input type="password" id="loginStaffCode" placeholder="Enter the code from your administrator" autocomplete="one-time-code">
+        <div class="password-input-wrapper">
+          <input type="password" id="loginStaffCode" placeholder="Enter the code from your administrator" autocomplete="one-time-code">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
       </div>
       <div class="form-group hidden" id="loginProgramGroup">
         <label for="loginProgram">Exam programme</label>
@@ -4473,7 +4601,16 @@
   </div>
 
   <!-- STAFF SCHOOL WORKSPACE (UNIFIED NATIONAL QUESTION BANK & CBT TEST BUILDER) -->
-  <div id="staffSchoolPage" class="hidden" style="margin-bottom:2rem;">
+  <div id="staffSchoolPage" class="staff-workspace-page hidden" style="margin-bottom:2rem;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>National Examination Curriculum Vault & CBT Station</strong>
+      </div>
+      <span class="badge badge-green">Unified Multi-Board Engine</span>
+    </div>
+
     <!-- Hero Header -->
     <section class="aloc-hero-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
@@ -4607,12 +4744,22 @@
   </div>
 
   <!-- STAFF CHAT PAGE -->
-  <div id="staffChatPage" class="hidden" style="margin-bottom:2rem;">
+  <div id="staffChatPage" class="staff-workspace-page hidden" style="margin-bottom:2rem;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>School Campus Chat & Direct Messages</strong>
+      </div>
+      <span class="badge badge-blue">Live Messaging</span>
+    </div>
     <div id="staffChatMount"></div>
   </div>
 
   <div id="staffMainContent">
-    <!-- BEAUTIFIED STAFF HERO BANNER -->
+    <!-- STAFF PAGE: OVERVIEW -->
+    <div id="staffPage-overview" class="staff-workspace-page">
+      <!-- BEAUTIFIED STAFF HERO BANNER -->
     <div class="staff-hero-banner" id="staffHeroBanner">
       <div class="hero-left">
         <div class="staff-avatar-ring">
@@ -4738,81 +4885,180 @@
     </div>
   </section>
 
-  <!-- STAFF SCHOOL LEADERBOARD (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.5rem;">
-    <button type="button" class="collapse-toggle-btn" id="toggleStaffLeaderboardBtn" onclick="toggleDashboardSection('staffLeaderboardContent', 'toggleStaffLeaderboardBtn', 'School-Wide Student Leaderboard', '🏆')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">🏆</span>
-        <span>
-          <strong>School-Wide Student Leaderboard</strong>
-          <small>Inspect overall student rankings, points summation across all 5 academic components</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▶ View School-Wide Student Leaderboard</span>
-    </button>
-    <div id="staffLeaderboardContent" class="collapsible-content" style="display:none; margin-top:1rem;">
-      <section class="card" id="staffLeaderboardCard">
-        <div class="section-heading" style="margin-top:1rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+    <!-- FACULTY FEATURE HUB & WORKSPACE SHORTCUTS -->
+    <div style="margin-top:1.5rem;">
+      <div class="section-heading" style="margin-bottom:.6rem;">
+        <div>
+          <p class="eyebrow">TEACHING WORKSPACE HUBS</p>
+          <h2 style="font-size:1.25rem;">Explore Staff Features & Tools</h2>
+        </div>
+      </div>
+      <div class="feature-hub-grid">
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('roster')">
           <div>
-            <p class="eyebrow">ACADEMIC MERIT & RANKINGS</p>
-            <h2 id="staffLeaderboardHeading">🏆 School-Wide Student Leaderboard</h2>
+            <div class="feature-hub-icon">👥</div>
+            <h3 class="feature-hub-title">Course Enrollment Roster</h3>
+            <p class="feature-hub-desc">Inspect all registered students enrolled in your assigned course and mark daily attendance.</p>
           </div>
-          <div style="display:flex; align-items:center; gap:.5rem;">
-            <span class="badge badge-green" id="staffLeaderboardTotalBadge">Standings Active</span>
-            <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStaffLeaderboard()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;">🔄 Refresh Leaderboard</button>
-          </div>
-        </div>
-        <p class="section-description" id="staffLeaderboardDescription">Academic standings segregated by examination board. Toggle between WAEC and JAMB candidate rankings below.</p>
-
-        <!-- Program Switch Tabs for Staff -->
-        <div class="lb-prog-tabs">
-          <button type="button" class="lb-prog-tab active" id="staffTabWaecLeaderboard" onclick="schoolController.switchStaffLeaderboardProgram('WAEC')">
-            📘 WAEC Candidates <span class="badge badge-blue" id="staffWaecCountBadge">0</span>
-          </button>
-          <button type="button" class="lb-prog-tab" id="staffTabJambLeaderboard" onclick="schoolController.switchStaffLeaderboardProgram('JAMB')">
-            📙 JAMB Candidates <span class="badge badge-gold" id="staffJambCountBadge">0</span>
-          </button>
+          <span class="feature-hub-action">Open Course Roster →</span>
         </div>
 
-        <!-- Filter & Search Controls for Staff -->
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem; margin-bottom:.85rem;">
-          <div style="display:flex; gap:.4rem; flex-wrap:wrap; align-items:center;">
-            <label style="font-size:.76rem; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:.3rem;">
-              Department:
-              <select id="staffLeaderboardDeptFilter" onchange="schoolController.filterStaffLeaderboard()" style="padding:.32rem .55rem; font-size:.78rem; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:600;">
-                <option value="all">All Departments</option>
-                <option value="Science">Science</option>
-                <option value="Commercial">Commercial</option>
-                <option value="Art">Art</option>
-              </select>
-            </label>
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('assignments')">
+          <div>
+            <div class="feature-hub-icon">📝</div>
+            <h3 class="feature-hub-title">Classwork & Submissions</h3>
+            <p class="feature-hub-desc">Publish homework tasks, attach files/worksheets, and evaluate submitted coursework with grades.</p>
           </div>
-          <div style="position:relative; min-width:210px;">
-            <input type="text" id="staffLeaderboardSearch" placeholder="🔍 Search student name..." oninput="schoolController.searchStaffLeaderboard(this.value)" style="width:100%; padding:.35rem .7rem; font-size:.8rem; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
-          </div>
+          <span class="feature-hub-action">Manage Assignments →</span>
         </div>
 
-        <div class="table-wrap">
-          <table class="school-table" id="staffLeaderboardTable">
-            <thead>
-              <tr>
-                <th style="width:65px; text-align:center;">Rank</th>
-                <th>Student</th>
-                <th>Department & Program</th>
-                <th>Activity Breakdown (Asgn • Clsw • Test • Exam • Att)</th>
-                <th style="text-align:right;">Total Points</th>
-                <th style="text-align:center;">Standing Status</th>
-              </tr>
-            </thead>
-            <tbody id="staffLeaderboardRows" aria-live="polite"><tr><td colspan="6" class="empty-state">No student scores recorded yet.</td></tr></tbody>
-          </table>
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('timetable')">
+          <div>
+            <div class="feature-hub-icon">📅</div>
+            <h3 class="feature-hub-title">Teaching Schedule & Meet</h3>
+            <p class="feature-hub-desc">View your weekly teaching timetable, send 1-day reminders, and launch Google Meet video classes.</p>
+          </div>
+          <span class="feature-hub-action">View Schedule →</span>
         </div>
-      </section>
+
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('scoresheet')">
+          <div>
+            <div class="feature-hub-icon">📊</div>
+            <h3 class="feature-hub-title">General Score Sheet</h3>
+            <p class="feature-hub-desc">Continuous assessment gradebook compiling all assignments, test results, and remarks.</p>
+          </div>
+          <span class="feature-hub-action">Open Gradebook →</span>
+        </div>
+
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('resources')">
+          <div>
+            <div class="feature-hub-icon">📚</div>
+            <h3 class="feature-hub-title">Learning Resources</h3>
+            <p class="feature-hub-desc">Upload approved curriculum textbooks, syllabi, and past question papers for student access.</p>
+          </div>
+          <span class="feature-hub-action">Access Resources →</span>
+        </div>
+
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('payroll')">
+          <div>
+            <div class="feature-hub-icon">💳</div>
+            <h3 class="feature-hub-title">Salary & Remittance</h3>
+            <p class="feature-hub-desc">View your monthly compensation, verified bank remittance account details, and download payslips.</p>
+          </div>
+          <span class="feature-hub-action">Inspect Payroll →</span>
+        </div>
+
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('leaderboard')">
+          <div>
+            <div class="feature-hub-icon">🏆</div>
+            <h3 class="feature-hub-title">Student Leaderboard</h3>
+            <p class="feature-hub-desc">Track school-wide student merit standings, activity points breakdown, and top performers.</p>
+          </div>
+          <span class="feature-hub-action">View Rankings →</span>
+        </div>
+
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('school')">
+          <div>
+            <div class="feature-hub-icon">🏫</div>
+            <h3 class="feature-hub-title">Question Bank & CBT</h3>
+            <p class="feature-hub-desc">National curriculum past question vault (1978–2026) across WAEC, JAMB, GCE, NECO & A'Levels.</p>
+          </div>
+          <span class="feature-hub-action">Open ALOC Station →</span>
+        </div>
+
+        <div class="feature-hub-card" onclick="selectStaffWorkspaceDropdownItem('chat')">
+          <div>
+            <div class="feature-hub-icon">💬</div>
+            <h3 class="feature-hub-title">Campus Chat & DMs</h3>
+            <p class="feature-hub-desc">Real-time messaging with individual students, fellow teachers, and community general forum.</p>
+          </div>
+          <span class="feature-hub-action">Open Chat →</span>
+        </div>
+      </div>
     </div>
+  </div> <!-- /#staffPage-overview -->
+
+  <!-- STAFF PAGE: LEADERBOARD -->
+  <div id="staffPage-leaderboard" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>School-Wide Student Leaderboard</strong>
+      </div>
+      <span class="badge badge-gold">Merit Rankings</span>
+    </div>
+
+    <section class="card" id="staffLeaderboardCard">
+      <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
+        <div>
+          <p class="eyebrow">ACADEMIC MERIT & RANKINGS</p>
+          <h2 id="staffLeaderboardHeading">🏆 School-Wide Student Leaderboard</h2>
+        </div>
+        <div style="display:flex; align-items:center; gap:.5rem;">
+          <span class="badge badge-green" id="staffLeaderboardTotalBadge">Standings Active</span>
+          <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStaffLeaderboard()" style="padding:.32rem .65rem; font-size:.78rem; font-weight:700;">🔄 Refresh Leaderboard</button>
+        </div>
+      </div>
+      <p class="section-description" id="staffLeaderboardDescription">Academic standings segregated by examination board. Toggle between WAEC and JAMB candidate rankings below.</p>
+
+      <!-- Program Switch Tabs for Staff -->
+      <div class="lb-prog-tabs">
+        <button type="button" class="lb-prog-tab active" id="staffTabWaecLeaderboard" onclick="schoolController.switchStaffLeaderboardProgram('WAEC')">
+          📘 WAEC Candidates <span class="badge badge-blue" id="staffWaecCountBadge">0</span>
+        </button>
+        <button type="button" class="lb-prog-tab" id="staffTabJambLeaderboard" onclick="schoolController.switchStaffLeaderboardProgram('JAMB')">
+          📙 JAMB Candidates <span class="badge badge-gold" id="staffJambCountBadge">0</span>
+        </button>
+      </div>
+
+      <!-- Filter & Search Controls for Staff -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.6rem; margin-bottom:.85rem;">
+        <div style="display:flex; gap:.4rem; flex-wrap:wrap; align-items:center;">
+          <label style="font-size:.76rem; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:.3rem;">
+            Department:
+            <select id="staffLeaderboardDeptFilter" onchange="schoolController.filterStaffLeaderboard()" style="padding:.32rem .55rem; font-size:.78rem; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:600;">
+              <option value="all">All Departments</option>
+              <option value="Science">Science</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Art">Art</option>
+            </select>
+          </label>
+        </div>
+        <div style="position:relative; min-width:210px;">
+          <input type="text" id="staffLeaderboardSearch" placeholder="🔍 Search student name..." oninput="schoolController.searchStaffLeaderboard(this.value)" style="width:100%; padding:.35rem .7rem; font-size:.8rem; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text);">
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="school-table" id="staffLeaderboardTable">
+          <thead>
+            <tr>
+              <th style="width:65px; text-align:center;">Rank</th>
+              <th>Student</th>
+              <th>Department & Program</th>
+              <th>Activity Breakdown (Asgn • Clsw • Test • Exam • Att)</th>
+              <th style="text-align:right;">Total Points</th>
+              <th style="text-align:center;">Standing Status</th>
+            </tr>
+          </thead>
+          <tbody id="staffLeaderboardRows" aria-live="polite"><tr><td colspan="6" class="empty-state">No student scores recorded yet.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
+  <!-- STAFF PAGE: COURSE ENROLLMENT ROSTER -->
+  <div id="staffPage-roster" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Course Enrollment Roster & Attendance</strong>
+      </div>
+      <span class="badge badge-green">Course Roster</span>
+    </div>
 
-  <div class="staff-tools">
     <section class="card">
       <div class="section-heading">
         <div>
@@ -4843,7 +5089,20 @@
         </table>
       </div>
     </section>
-    <section class="card">
+  </div>
+
+  <!-- STAFF PAGE: CLASSWORK & ASSIGNMENTS & SUBMISSIONS -->
+  <div id="staffPage-assignments" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Classwork, Assignments & Student Submissions</strong>
+      </div>
+      <span class="badge badge-blue">Assessments Hub</span>
+    </div>
+
+    <section class="card" style="margin-bottom:1.5rem;">
       <div class="section-heading"><div><p class="eyebrow">CLASSWORK</p><h2>Publish an assignment</h2></div></div>
       <form class="inline-form" id="staffAssignmentForm" onsubmit="createAssignment(event)">
         <label>Coursework Title *<input id="newAssignmentTitle" required maxlength="100" placeholder="e.g. Physics Week 4 Motion Problems"></label>
@@ -4871,316 +5130,290 @@
       </form>
       <p class="section-description" style="margin-top:.8rem;">Assignments will be visible to students enrolled in your subject.</p>
     </section>
-  </div>
 
-  <!-- STAFF TEACHING TIMETABLE & GOOGLE MEET CLASSES (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.5rem;">
-    <button type="button" class="collapse-toggle-btn expanded" id="toggleStaffTimetableBtn" onclick="toggleDashboardSection('staffTimetableContent', 'toggleStaffTimetableBtn', 'My Teaching Schedule & Google Meet Classes', '📅')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">📅</span>
-        <span>
-          <strong>My Teaching Schedule & Google Meet Classes</strong>
-          <small>View when you have class, send 1-day reminders, and create/update Google Meet links for your students</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▼ Hide Schedule</span>
-    </button>
-    <div id="staffTimetableContent" class="collapsible-content" style="display:block; margin-top:1rem;">
-      <section class="card" id="staffTimetableCard">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">TEACHING CALENDAR</p>
-            <h2>My Assigned Classes & Live Sessions</h2>
-          </div>
-          <span class="badge badge-green" id="staffTimetableCountBadge">0 Scheduled Classes</span>
+    <!-- Student Submissions Card -->
+    <section class="card" id="staffSubmissionsCard">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">COURSEWORK INBOX</p>
+          <h2>Student Submissions & Grading</h2>
         </div>
-        <p class="section-description">Below are your scheduled teaching classes. Send a reminder to your students 1 day before class or update your Google Meet class link so students can join from their dashboard.</p>
-        
-        <div class="table-wrap">
-          <table class="school-table">
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Time Slot</th>
-                <th>Subject & Department</th>
-                <th>Classroom / Venue</th>
-                <th>Google Meet Class Link</th>
-                <th>1-Day Student Reminder</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="staffTimetableRows" aria-live="polite">
-              <tr><td colspan="7" class="empty-state">Loading your teaching timetable...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  </div>
+        <span class="badge badge-green" id="staffSubmissionCountBadge">0 Submissions</span>
+      </div>
+      <p class="section-description">View all assignment solutions submitted by students offering your course. Click "Grade / Remarks" to evaluate and record feedback.</p>
 
-  <!-- STAFF ASSIGNMENT SUBMISSIONS & GRADING (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.5rem;">
-    <button type="button" class="collapse-toggle-btn expanded" id="toggleStaffSubmissionsBtn" onclick="toggleDashboardSection('staffSubmissionsContent', 'toggleStaffSubmissionsBtn', 'Student Submissions & Grading', '📥')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">📥</span>
-        <span>
-          <strong>Student Assignment Submissions & Grading</strong>
-          <small>Review submitted coursework, award scores, and give constructive remarks to your students</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▼ Hide Submissions</span>
-    </button>
-    <div id="staffSubmissionsContent" class="collapsible-content" style="display:block; margin-top:1rem;">
-      <section class="card" id="staffSubmissionsCard">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">COURSEWORK INBOX</p>
-            <h2>Student Submissions & Grading</h2>
-          </div>
-          <span class="badge badge-green" id="staffSubmissionCountBadge">0 Submissions</span>
-        </div>
-        <p class="section-description">View all assignment solutions submitted by students offering your course. Click "Grade / Remarks" to evaluate and record feedback.</p>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem;">
-          <div style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:center;">
-            <label style="font-size:.78rem; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:.35rem;">
-              Subject:
-              <select id="staffSubmissionsFilterSubject" onchange="schoolController.filterStaffSubmissions()" style="padding:.45rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.82rem; font-weight:600;">
-                <option value="all">All Subjects (All Coursework)</option>
-                <option value="my_course">My Assigned Subject</option>
-              </select>
-            </label>
-            <label style="font-size:.78rem; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:.35rem;">
-              Status:
-              <select id="staffSubmissionsFilterStatus" onchange="schoolController.filterStaffSubmissions()" style="padding:.45rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.82rem; font-weight:600;">
-                <option value="all">All Statuses</option>
-                <option value="pending">⏳ Pending Review</option>
-                <option value="graded">✓ Graded</option>
-              </select>
-            </label>
-          </div>
-          <button type="button" class="btn-sm btn-sm-edit" onclick="schoolController.loadStaffSubmissions()" style="padding:.45rem .85rem;">🔄 Refresh Inbox</button>
-        </div>
-
-        <div class="table-wrap">
-          <table class="school-table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Assignment Title</th>
-                <th>Submitted Answer</th>
-                <th>Uploaded File</th>
-                <th>Date Submitted</th>
-                <th>Score & Grade</th>
-                <th>Teacher Remarks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="staffSubmissionsRows" aria-live="polite">
-              <tr><td colspan="8" class="empty-state">Loading student submissions...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  </div>
-
-  <!-- STAFF GENERAL SCORE SHEET (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.2rem;">
-    <button type="button" class="collapse-toggle-btn" id="toggleStaffScoresheetBtn" onclick="toggleDashboardSection('staffScoresheetContent', 'toggleStaffScoresheetBtn', 'General Score Sheet', '📊')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">📊</span>
-        <span>
-          <strong>General Score Sheet & Gradebook</strong>
-          <small>View complete master scoresheet of all students offering your course across all assignments</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▶ View Score Sheet</span>
-    </button>
-    <div id="staffScoresheetContent" class="collapsible-content" style="display:none; margin-top:1rem;">
-      <section class="card" id="staffScoresheetCard">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">ACADEMIC GRADEBOOK</p>
-            <h2>Course General Score Sheet</h2>
-          </div>
-          <div style="display:flex; gap:.4rem; align-items:center; flex-wrap:wrap;">
-            <span class="badge badge-gold" id="staffScoresheetAvgBadge">Avg: 0%</span>
-            <span class="badge badge-blue" id="staffScoresheetGradedBadge">0 Graded</span>
-          </div>
-        </div>
-        <p class="section-description">Master grade sheet showing every student offering your course, their assignment submission status, scores, and remarks.</p>
-
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem;">
-          <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
-            <input type="text" id="staffScoresheetSearch" placeholder="🔍 Search student name, ID, email..." oninput="schoolController.searchStaffScoresheet(this.value)" style="padding:.5rem .8rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem; width:250px;">
-            <select id="staffScoresheetFilterSubject" onchange="schoolController.filterStaffScoresheet()" style="padding:.5rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem;">
-              <option value="all">All Subjects</option>
-              <option value="my_course">My Assigned Course</option>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem;">
+        <div style="display:flex; gap:.6rem; flex-wrap:wrap; align-items:center;">
+          <label style="font-size:.78rem; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:.35rem;">
+            Subject:
+            <select id="staffSubmissionsFilterSubject" onchange="schoolController.filterStaffSubmissions()" style="padding:.45rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.82rem; font-weight:600;">
+              <option value="all">All Subjects (All Coursework)</option>
+              <option value="my_course">My Assigned Subject</option>
             </select>
-            <select id="staffScoresheetFilterAssignment" onchange="schoolController.filterStaffScoresheet()" style="padding:.5rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem;">
-              <option value="0">All Assignments</option>
+          </label>
+          <label style="font-size:.78rem; font-weight:700; color:var(--muted); display:flex; align-items:center; gap:.35rem;">
+            Status:
+            <select id="staffSubmissionsFilterStatus" onchange="schoolController.filterStaffSubmissions()" style="padding:.45rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.82rem; font-weight:600;">
+              <option value="all">All Statuses</option>
+              <option value="pending">⏳ Pending Review</option>
+              <option value="graded">✓ Graded</option>
             </select>
-          </div>
-          <span class="badge badge-green" id="staffScoresheetTotalBadge">0 Records</span>
+          </label>
         </div>
+        <button type="button" class="btn-sm btn-sm-edit" onclick="schoolController.loadStaffSubmissions()" style="padding:.45rem .85rem;">🔄 Refresh Inbox</button>
+      </div>
 
-        <div class="table-wrap">
-          <table class="school-table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Programme & Dept</th>
-                <th>Assignment</th>
-                <th>Submission Status</th>
-                <th>Score</th>
-                <th>Grade</th>
-                <th>Teacher Remarks</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="staffScoresheetRows" aria-live="polite">
-              <tr><td colspan="8" class="empty-state">Loading course score sheet...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
+      <div class="table-wrap">
+        <table class="school-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Assignment Title</th>
+              <th>Submitted Answer</th>
+              <th>Uploaded File</th>
+              <th>Date Submitted</th>
+              <th>Score & Grade</th>
+              <th>Teacher Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="staffSubmissionsRows" aria-live="polite">
+            <tr><td colspan="8" class="empty-state">Loading student submissions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
-  <!-- STAFF LEARNING RESOURCES (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.5rem;">
-    <button type="button" class="collapse-toggle-btn" id="toggleStaffResourcesBtn" onclick="toggleDashboardSection('staffResourcesContent', 'toggleStaffResourcesBtn', 'Learning Resources Repository', '📚')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">📚</span>
-        <span>
-          <strong>Learning Resources (Past Questions & Textbooks)</strong>
-          <small>Click to view, upload, and edit WAEC / JAMB past questions and subject textbooks</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▶ View Resources</span>
-    </button>
-    <div id="staffResourcesContent" class="collapsible-content" style="display:none; margin-top:1rem;">
-      <section class="card" id="staffResourcesCard">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">ACADEMIC REPOSITORY</p>
-            <h2>Learning Resources (Past Questions & Textbooks)</h2>
-          </div>
-          <button type="button" class="btn-primary" style="width:auto; padding:.5rem 1.1rem; min-height:auto;" onclick="openAddResourceModal()">+ Add Resource</button>
-        </div>
-        <p class="section-description">Publish and edit WAEC & JAMB past questions and subject textbooks for students to read and practice.</p>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem;">
-          <div class="tabs" style="position:static; margin-bottom:0; box-shadow:none; padding:.25rem;">
-            <button type="button" class="tab active" data-res-filter="all" onclick="filterStaffAdminResources('all', this)">All Resources</button>
-            <button type="button" class="tab" data-res-filter="past_question" onclick="filterStaffAdminResources('past_question', this)">Past Questions (WAEC/JAMB)</button>
-            <button type="button" class="tab" data-res-filter="textbook" onclick="filterStaffAdminResources('textbook', this)">Textbooks</button>
-          </div>
-          <input type="text" id="staffResourceSearch" placeholder="Search resources..." oninput="handleResourceSearch(this.value)" style="padding:.5rem .8rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem; width:220px;">
-        </div>
-
-        <div class="table-wrap">
-          <table class="school-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Type</th>
-                <th>Exam / Details</th>
-                <th>Subject</th>
-                <th>File / Document</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="staffResourceRows" aria-live="polite">
-              <tr><td colspan="6" class="empty-state">Loading resources...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+  <!-- STAFF PAGE: TIMETABLE & GOOGLE MEET CLASSES -->
+  <div id="staffPage-timetable" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Teaching Schedule & Google Meet Classes</strong>
+      </div>
+      <span class="badge badge-green">Class Calendar</span>
     </div>
+
+    <section class="card" id="staffTimetableCard">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">TEACHING CALENDAR</p>
+          <h2>My Assigned Classes & Live Sessions</h2>
+        </div>
+        <span class="badge badge-green" id="staffTimetableCountBadge">0 Scheduled Classes</span>
+      </div>
+      <p class="section-description">Below are your scheduled teaching classes. Send a reminder to your students 1 day before class or update your Google Meet class link so students can join from their dashboard.</p>
+      
+      <div class="table-wrap">
+        <table class="school-table">
+          <thead>
+            <tr>
+              <th>Day</th>
+              <th>Time Slot</th>
+              <th>Subject & Department</th>
+              <th>Classroom / Venue</th>
+              <th>Google Meet Class Link</th>
+              <th>1-Day Student Reminder</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="staffTimetableRows" aria-live="polite">
+            <tr><td colspan="7" class="empty-state">Loading your teaching timetable...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
 
-  <!-- STAFF SALARY REMITTANCE & BANK DETAILS (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.5rem;">
-    <button type="button" class="collapse-toggle-btn" id="toggleStaffPayrollBtn" onclick="toggleDashboardSection('staffPayrollContent', 'toggleStaffPayrollBtn', 'My Salary & Banking Remittance', '💼')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">💼</span>
-        <span>
-          <strong>My Salary & Bank Remittance</strong>
-          <small>Manage your payout bank account and review monthly payslips and payment receipts</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▶ View Salary & Banking</span>
-    </button>
-    <div id="staffPayrollContent" class="collapsible-content" style="display:none; margin-top:1rem;">
-      <!-- Bank Account Overview Card -->
-      <section class="card" style="margin-bottom:1.2rem;">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">REMITTANCE ACCOUNT</p>
-            <h2>My Bank Account Details</h2>
-          </div>
-          <button type="button" class="btn-sm btn-sm-edit" onclick="schoolController.openStaffBankModal()" style="padding:.5rem 1rem;">✏ Update Bank Details</button>
-        </div>
-        <p class="section-description">Salary remittances and teaching compensations will be transferred directly to this bank account through the school platform.</p>
-
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
-          <div style="padding:1rem 1.2rem; background:var(--bg); border:1px solid var(--border); border-radius:14px;">
-            <div style="font-size:.78rem; color:var(--muted); font-weight:700; text-transform:uppercase;">Bank Name</div>
-            <div style="font-size:1.25rem; font-weight:850; color:var(--text); margin-top:.3rem;" id="staffBankNameDisplay">Zenith Bank</div>
-            <small style="color:var(--muted); font-size:.75rem;">Designated deposit institution</small>
-          </div>
-          <div style="padding:1rem 1.2rem; background:rgba(23,107,80,.06); border:1.5px solid var(--primary); border-radius:14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:.78rem; color:var(--primary); font-weight:800; text-transform:uppercase;">Account Number</span>
-              <button type="button" class="btn-sm btn-sm-view" style="padding:.1rem .45rem; font-size:.68rem;" onclick="schoolController.copyToClipboard(document.getElementById('staffAccountNumberDisplay').textContent, 'Account Number')">📋 Copy</button>
-            </div>
-            <div style="font-size:1.45rem; font-weight:850; font-family:monospace; color:var(--primary); margin-top:.3rem;" id="staffAccountNumberDisplay">2081928374</div>
-            <div style="font-size:.82rem; font-weight:700; color:var(--text); margin-top:.2rem;" id="staffAccountNameDisplay">John Doe</div>
-          </div>
-          <div style="padding:1rem 1.2rem; background:var(--bg); border:1px solid var(--border); border-radius:14px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-size:.78rem; color:var(--text); font-weight:700; text-transform:uppercase;">Monthly Compensation</span>
-              <span class="badge badge-green" id="staffMonthPaymentStatusBadge">Paid ✓</span>
-            </div>
-            <div style="font-size:1.45rem; font-weight:850; color:var(--text); margin-top:.3rem;" id="staffSalaryDisplay">₦120,000.00</div>
-            <small style="color:var(--muted); font-size:.75rem;">Assigned monthly teaching salary</small>
-          </div>
-        </div>
-      </section>
-
-      <!-- Salary Payslips History Table -->
-      <section class="card">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">PAYMENT RECEIPTS</p>
-            <h2>My Payslips & Remittance History</h2>
-          </div>
-          <button type="button" class="btn-sm btn-sm-edit" onclick="schoolController.loadStaffPayrollInfo()">🔄 Refresh</button>
-        </div>
-        <p class="section-description">Official history of all monthly salaries and compensation allowances paid to you through the platform.</p>
-
-        <div class="table-wrap">
-          <table class="school-table">
-            <thead>
-              <tr>
-                <th>Reference</th>
-                <th>Period</th>
-                <th>Base Salary</th>
-                <th>Net Paid</th>
-                <th>Bank Credited</th>
-                <th>Date Paid</th>
-                <th>Payslip</th>
-              </tr>
-            </thead>
-            <tbody id="staffPayslipRows" aria-live="polite">
-              <tr><td colspan="7" class="empty-state">Loading payslips...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+  <!-- STAFF PAGE: GENERAL SCORE SHEET -->
+  <div id="staffPage-scoresheet" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>General Score Sheet & Gradebook</strong>
+      </div>
+      <span class="badge badge-gold">Gradebook</span>
     </div>
+
+    <section class="card" id="staffScoresheetCard">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ACADEMIC GRADEBOOK</p>
+          <h2>Course General Score Sheet</h2>
+        </div>
+        <div style="display:flex; gap:.4rem; align-items:center; flex-wrap:wrap;">
+          <span class="badge badge-gold" id="staffScoresheetAvgBadge">Avg: 0%</span>
+          <span class="badge badge-blue" id="staffScoresheetGradedBadge">0 Graded</span>
+        </div>
+      </div>
+      <p class="section-description">Master grade sheet showing every student offering your course, their assignment submission status, scores, and remarks.</p>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem;">
+        <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:center;">
+          <input type="text" id="staffScoresheetSearch" placeholder="🔍 Search student name, ID, email..." oninput="schoolController.searchStaffScoresheet(this.value)" style="padding:.5rem .8rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem; width:250px;">
+          <select id="staffScoresheetFilterSubject" onchange="schoolController.filterStaffScoresheet()" style="padding:.5rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem;">
+            <option value="all">All Subjects</option>
+            <option value="my_course">My Assigned Course</option>
+          </select>
+          <select id="staffScoresheetFilterAssignment" onchange="schoolController.filterStaffScoresheet()" style="padding:.5rem .75rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem;">
+            <option value="0">All Assignments</option>
+          </select>
+        </div>
+        <span class="badge badge-green" id="staffScoresheetTotalBadge">0 Records</span>
+      </div>
+
+      <div class="table-wrap">
+        <table class="school-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Programme & Dept</th>
+              <th>Assignment</th>
+              <th>Submission Status</th>
+              <th>Score</th>
+              <th>Grade</th>
+              <th>Teacher Remarks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="staffScoresheetRows" aria-live="polite">
+            <tr><td colspan="8" class="empty-state">Loading course score sheet...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- STAFF PAGE: LEARNING RESOURCES -->
+  <div id="staffPage-resources" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Learning Resources Repository</strong>
+      </div>
+      <span class="badge badge-blue">Curriculum Vault</span>
+    </div>
+
+    <section class="card" id="staffResourcesCard">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">ACADEMIC REPOSITORY</p>
+          <h2>Learning Resources (Past Questions & Textbooks)</h2>
+        </div>
+        <button type="button" class="btn-primary" style="width:auto; padding:.5rem 1.1rem; min-height:auto;" onclick="openAddResourceModal()">+ Add Resource</button>
+      </div>
+      <p class="section-description">Publish and edit WAEC & JAMB past questions and subject textbooks for students to read and practice.</p>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.75rem; margin-bottom:1rem;">
+        <div class="tabs" style="position:static; margin-bottom:0; box-shadow:none; padding:.25rem;">
+          <button type="button" class="tab active" data-res-filter="all" onclick="filterStaffAdminResources('all', this)">All Resources</button>
+          <button type="button" class="tab" data-res-filter="past_question" onclick="filterStaffAdminResources('past_question', this)">Past Questions (WAEC/JAMB)</button>
+          <button type="button" class="tab" data-res-filter="textbook" onclick="filterStaffAdminResources('textbook', this)">Textbooks</button>
+        </div>
+        <input type="text" id="staffResourceSearch" placeholder="Search resources..." oninput="handleResourceSearch(this.value)" style="padding:.5rem .8rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-size:.85rem; width:220px;">
+      </div>
+
+      <div class="table-wrap">
+        <table class="school-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Exam / Details</th>
+              <th>Subject</th>
+              <th>File / Document</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="staffResourceRows" aria-live="polite">
+            <tr><td colspan="6" class="empty-state">Loading resources...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <!-- STAFF PAGE: SALARY & REMITTANCE -->
+  <div id="staffPage-payroll" class="staff-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectStaffWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>My Salary & Bank Remittance</strong>
+      </div>
+      <span class="badge badge-green">Payroll Account</span>
+    </div>
+
+    <!-- Bank Account Overview Card -->
+    <section class="card" style="margin-bottom:1.2rem;">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">REMITTANCE ACCOUNT</p>
+          <h2>My Bank Account Details</h2>
+        </div>
+        <button type="button" class="btn-sm btn-sm-edit" onclick="schoolController.openStaffBankModal()" style="padding:.5rem 1rem;">✏ Update Bank Details</button>
+      </div>
+      <p class="section-description">Salary remittances and teaching compensations will be transferred directly to this bank account through the school platform.</p>
+
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1rem;">
+        <div style="padding:1rem 1.2rem; background:var(--bg); border:1px solid var(--border); border-radius:14px;">
+          <div style="font-size:.78rem; color:var(--muted); font-weight:700; text-transform:uppercase;">Bank Name</div>
+          <div style="font-size:1.25rem; font-weight:850; color:var(--text); margin-top:.3rem;" id="staffBankNameDisplay">Zenith Bank</div>
+          <small style="color:var(--muted); font-size:.75rem;">Designated deposit institution</small>
+        </div>
+        <div style="padding:1rem 1.2rem; background:rgba(23,107,80,.06); border:1.5px solid var(--primary); border-radius:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:.78rem; color:var(--primary); font-weight:800; text-transform:uppercase;">Account Number</span>
+            <button type="button" class="btn-sm btn-sm-view" style="padding:.1rem .45rem; font-size:.68rem;" onclick="schoolController.copyToClipboard(document.getElementById('staffAccountNumberDisplay').textContent, 'Account Number')">📋 Copy</button>
+          </div>
+          <div style="font-size:1.45rem; font-weight:850; font-family:monospace; color:var(--primary); margin-top:.3rem;" id="staffAccountNumberDisplay">2081928374</div>
+          <div style="font-size:.82rem; font-weight:700; color:var(--text); margin-top:.2rem;" id="staffAccountNameDisplay">John Doe</div>
+        </div>
+        <div style="padding:1rem 1.2rem; background:var(--bg); border:1px solid var(--border); border-radius:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:.78rem; color:var(--text); font-weight:700; text-transform:uppercase;">Monthly Compensation</span>
+            <span class="badge badge-green" id="staffMonthPaymentStatusBadge">Paid ✓</span>
+          </div>
+          <div style="font-size:1.45rem; font-weight:850; color:var(--text); margin-top:.3rem;" id="staffSalaryDisplay">₦120,000.00</div>
+          <small style="color:var(--muted); font-size:.75rem;">Assigned monthly teaching salary</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- Salary Payslips History Table -->
+    <section class="card">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">PAYMENT RECEIPTS</p>
+          <h2>My Payslips & Remittance History</h2>
+        </div>
+        <button type="button" class="btn-sm btn-sm-edit" onclick="schoolController.loadStaffPayrollInfo()">🔄 Refresh</button>
+      </div>
+      <p class="section-description">Official history of all monthly salaries and compensation allowances paid to you through the platform.</p>
+
+      <div class="table-wrap">
+        <table class="school-table">
+          <thead>
+            <tr>
+              <th>Reference</th>
+              <th>Period</th>
+              <th>Base Salary</th>
+              <th>Net Paid</th>
+              <th>Bank Credited</th>
+              <th>Date Paid</th>
+              <th>Payslip</th>
+            </tr>
+          </thead>
+          <tbody id="staffPayslipRows" aria-live="polite">
+            <tr><td colspan="7" class="empty-state">Loading payslips...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
   </div> <!-- /#staffMainContent -->
 </div>
@@ -5294,7 +5527,16 @@
   </div>
 
   <!-- ADMIN SCHOOL WORKSPACE (MULTI-API CBT ENGINE, PROVIDERS, PERMISSIONS & SETTINGS) -->
-  <div id="adminSchoolPage" class="hidden" style="margin-bottom:2rem;">
+  <div id="adminSchoolPage" class="admin-workspace-page hidden" style="margin-bottom:2rem;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Unified National Examination Station Administration (ALOC Multi-API Engine)</strong>
+      </div>
+      <span class="badge badge-gold">Platform Configuration</span>
+    </div>
+
     <!-- Hero Header -->
     <section class="aloc-hero-card">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
@@ -5568,12 +5810,22 @@
   </div>
 
   <!-- ADMIN CHAT PAGE -->
-  <div id="adminChatPage" class="hidden" style="margin-bottom:2rem;">
+  <div id="adminChatPage" class="admin-workspace-page hidden" style="margin-bottom:2rem;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Campus Chat, Direct Messaging & Moderation</strong>
+      </div>
+      <span class="badge badge-gold">Admin Moderation</span>
+    </div>
     <div id="adminChatMount"></div>
   </div>
 
   <div id="adminMainContent">
-  <div class="welcome-bar">
+    <!-- ADMIN PAGE: OVERVIEW -->
+    <div id="adminPage-overview" class="admin-workspace-page">
+      <div class="welcome-bar">
     <div>
       <p class="welcome-overline">SCHOOL ADMINISTRATION</p>
       <div style="display:flex; align-items:center; gap:.5rem; margin-bottom:.35rem; flex-wrap:wrap;">
@@ -5594,20 +5846,157 @@
     <div class="stat-card"><div class="label">⚙️ Portal status</div><div class="value" style="color:var(--accent);">Active</div><div class="hint">Connected to backend</div></div>
   </div>
 
-  <!-- PAYSTACK PAYMENT GATEWAY (COLLAPSIBLE BUTTON) -->
-  <div style="margin-top:1.5rem;" id="adminPaystackSection">
-    <button type="button" class="collapse-toggle-btn" id="toggleAdminPaystackBtn" onclick="toggleDashboardSection('adminPaystackContent', 'toggleAdminPaystackBtn', 'Paystack Payment Gateway', '💳')">
-      <span class="toggle-btn-left">
-        <span class="toggle-icon">💳</span>
-        <span>
-          <strong>Paystack Payment Gateway</strong>
-          <small>Manage student fees collection (monthly 10% discount / weekly 4-part split) & staff automated salary remittance</small>
-        </span>
-      </span>
-      <span class="toggle-indicator">▶ View Paystack Gateway</span>
-    </button>
+  <!-- ADMIN FEATURE HUB & QUICK NAVIGATION CARDS -->
+  <div style="margin-top:1.5rem;">
+    <div class="section-heading" style="margin-bottom:.6rem;">
+      <div>
+        <p class="eyebrow">ADMINISTRATION CONTROL HUBS</p>
+        <h2 style="font-size:1.25rem;">Executive Management Modules</h2>
+      </div>
+    </div>
+    <div class="feature-hub-grid">
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('students')">
+        <div>
+          <div class="feature-hub-icon">👥</div>
+          <h3 class="feature-hub-title">Registered Students Directory</h3>
+          <p class="feature-hub-desc">Review student profiles, pending payment verification clearance, department assignments, and enrollments.</p>
+        </div>
+        <span class="feature-hub-action">Open Student Directory →</span>
+      </div>
 
-    <div id="adminPaystackContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('staff')">
+        <div>
+          <div class="feature-hub-icon">👨‍🏫</div>
+          <h3 class="feature-hub-title">Staff Accounts & Directory</h3>
+          <p class="feature-hub-desc">Create teacher accounts, assign course subjects, configure monthly salaries, and inspect banking details.</p>
+        </div>
+        <span class="feature-hub-action">Open Staff Directory →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('fees')">
+        <div>
+          <div class="feature-hub-icon">💰</div>
+          <h3 class="feature-hub-title">School Fees & Billing</h3>
+          <p class="feature-hub-desc">Tuition revenue tracking, 10% monthly discount pricing, 4-week split billing plans, and manual payment verification.</p>
+        </div>
+        <span class="feature-hub-action">Open Fees Hub →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('payroll')">
+        <div>
+          <div class="feature-hub-icon">💳</div>
+          <h3 class="feature-hub-title">Staff Payroll & Remittance</h3>
+          <p class="feature-hub-desc">Disburse monthly faculty salaries directly via bank transfer, record payment slips, and manage payroll ledger.</p>
+        </div>
+        <span class="feature-hub-action">Open Payroll Management →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('ledger')">
+        <div>
+          <div class="feature-hub-icon">📖</div>
+          <h3 class="feature-hub-title">Financial Record Book</h3>
+          <p class="feature-hub-desc">Double-entry ledger book compiling all tuition collections, payroll disbursements, and operational expenses.</p>
+        </div>
+        <span class="feature-hub-action">Inspect Balance Sheet →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('paystack')">
+        <div>
+          <div class="feature-hub-icon">⚡</div>
+          <h3 class="feature-hub-title">Paystack Payment Gateway</h3>
+          <p class="feature-hub-desc">Configure API credentials, toggle checkout availability, manage fee bearers, and test bank remittance.</p>
+        </div>
+        <span class="feature-hub-action">Configure Gateway →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('timetable')">
+        <div>
+          <div class="feature-hub-icon">📅</div>
+          <h3 class="feature-hub-title">Timetable & Live Classes</h3>
+          <p class="feature-hub-desc">School-wide academic class schedules, Google Meet video integration, and teacher classroom allocation.</p>
+        </div>
+        <span class="feature-hub-action">Manage Timetable →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('scoresheet')">
+        <div>
+          <div class="feature-hub-icon">📊</div>
+          <h3 class="feature-hub-title">Gradebook & Scoresheet</h3>
+          <p class="feature-hub-desc">Continuous assessment scores, exam grades, pass rates, and teacher remarks across all classes.</p>
+        </div>
+        <span class="feature-hub-action">View Master Scoresheet →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('leaderboard')">
+        <div>
+          <div class="feature-hub-icon">🏆</div>
+          <h3 class="feature-hub-title">Student Leaderboard</h3>
+          <p class="feature-hub-desc">Academic excellence standings, five-component point totals, and performance rankings by department.</p>
+        </div>
+        <span class="feature-hub-action">View Leaderboard →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('resources')">
+        <div>
+          <div class="feature-hub-icon">📚</div>
+          <h3 class="feature-hub-title">Educational Resources</h3>
+          <p class="feature-hub-desc">Upload approved curriculum textbooks, syllabi, and official past questions for students and teachers.</p>
+        </div>
+        <span class="feature-hub-action">Manage Curriculum Files →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('notices')">
+        <div>
+          <div class="feature-hub-icon">📢</div>
+          <h3 class="feature-hub-title">Notices & Bulletins Hub</h3>
+          <p class="feature-hub-desc">Broadcast school announcements, circulars, exam dates, and bulletins with attachments to students and staff.</p>
+        </div>
+        <span class="feature-hub-action">Publish Bulletins →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('admins')">
+        <div>
+          <div class="feature-hub-icon">🛡️</div>
+          <h3 class="feature-hub-title">Administrator Governance</h3>
+          <p class="feature-hub-desc">Manage system administrator roles, RBAC access permissions, MFA security, and review audit trail logs.</p>
+        </div>
+        <span class="feature-hub-action">Open Governance Hub →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('school')">
+        <div>
+          <div class="feature-hub-icon">🏫</div>
+          <h3 class="feature-hub-title">Question Bank & CBT Administration</h3>
+          <p class="feature-hub-desc">Manage multi-board APIs (WAEC, JAMB, GCE, NECO, A'Levels 1978–2026), student custom timers, and question limits.</p>
+        </div>
+        <span class="feature-hub-action">Open ALOC Station →</span>
+      </div>
+
+      <div class="feature-hub-card" onclick="selectAdminWorkspaceDropdownItem('chat')">
+        <div>
+          <div class="feature-hub-icon">💬</div>
+          <h3 class="feature-hub-title">Campus Chat & Governance</h3>
+          <p class="feature-hub-desc">Direct communication with students and faculty, campus community forum, message moderation, and clear chat.</p>
+        </div>
+        <span class="feature-hub-action">Open Moderation Chat →</span>
+      </div>
+    </div>
+  </div>
+  </div> <!-- /#adminPage-overview -->
+
+  <!-- ADMIN PAGE: PAYSTACK PAYMENT GATEWAY -->
+  <div id="adminPage-paystack" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Paystack Payment Gateway Configuration & Automated Remittance</strong>
+      </div>
+      <span class="badge badge-blue">Fintech Gateway</span>
+    </div>
+
+    <div style="margin-top:1rem;" id="adminPaystackSection">
+      <div id="adminPaystackContent" style="display:block !important;">
       <!-- Hero Header -->
         <section class="aloc-hero-card" style="background:linear-gradient(135deg, #0b2d4b 0%, #0369a1 100%);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
@@ -5730,7 +6119,10 @@
 
               <div>
                 <label style="display:block; font-size:.82rem; font-weight:700; margin-bottom:.35rem; color:var(--text);">Paystack Secret Key</label>
-                <input type="password" id="adminPaystackSecretKey" value="sk_test_7c2b3e8a1f490d56b821a9c402e185f3" placeholder="sk_test_... or sk_live_..." style="width:100%; padding:.65rem .85rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-family:monospace; font-size:.85rem;">
+                <div class="password-input-wrapper">
+                  <input type="password" id="adminPaystackSecretKey" value="sk_test_7c2b3e8a1f490d56b821a9c402e185f3" placeholder="sk_test_... or sk_live_..." style="width:100%; padding:.65rem .85rem; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text); font-family:monospace; font-size:.85rem;">
+                  <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+                </div>
                 <small style="display:block; color:var(--muted); font-size:.72rem; margin-top:.25rem;">Stored securely on backend server for transaction verification and transfers.</small>
               </div>
             </div>
@@ -5790,6 +6182,18 @@
         </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-paystack -->
+
+  <!-- ADMIN PAGE: REGISTERED STUDENTS & VERIFICATIONS -->
+  <div id="adminPage-students" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Registered Students Directory & Payment Verifications</strong>
+      </div>
+      <span class="badge badge-green">Admissions & Enrolment</span>
+    </div>
 
   <!-- STUDENT PAYMENT VERIFICATIONS & ID DISPATCH MANAGEMENT (ADMIN QUEUE) -->
   <section class="card" id="adminStudentVerificationsSection" style="margin-top:1.5rem; border:1.5px solid rgba(245,158,11,0.3);">
@@ -5918,7 +6322,7 @@
       </span>
       <span class="toggle-indicator">▶ View Students Directory</span>
     </button>
-    <div id="adminStudentsContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminStudentsContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminStudentsCard">
         <div class="section-heading">
           <div>
@@ -5967,6 +6371,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-students -->
+
+  <!-- ADMIN PAGE: STAFF DIRECTORY & FACULTY -->
+  <div id="adminPage-staff" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Staff Account Directory & Faculty Allocation</strong>
+      </div>
+      <span class="badge badge-gold">Faculty</span>
+    </div>
 
   <!-- 2. STAFF & FACULTY DATA VISUALIZATIONS -->
   <section class="admin-viz-card" id="adminStaffVizCard" style="margin-top:1.5rem;">
@@ -6013,7 +6429,7 @@
       </span>
       <span class="toggle-indicator">▶ View Staff Directory</span>
     </button>
-    <div id="adminStaffContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminStaffContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminStaffCard">
         <div class="section-heading">
           <div>
@@ -6074,7 +6490,10 @@
         </select>
       </label>
       <label style="grid-column: 1 / -1;">Temporary portal password
-        <input id="newStaffPassword" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters">
+        <div class="password-input-wrapper">
+          <input id="newStaffPassword" name="password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
       </label>
       <button type="submit">Create staff account</button>
     </form>
@@ -6089,6 +6508,18 @@
     </form>
     <div id="issuedStaffCode" class="empty-state" style="margin-top:.8rem;" aria-live="polite">No code generated in this session.</div>
   </section>
+  </div> <!-- /#adminPage-staff -->
+
+  <!-- ADMIN PAGE: TIMETABLE SCHEDULE -->
+  <div id="adminPage-timetable" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>School Class Timetable Schedule & Meet Links</strong>
+      </div>
+      <span class="badge badge-blue">Academic Schedule</span>
+    </div>
 
   <!-- ADMIN TIMETABLE MANAGEMENT (COLLAPSIBLE BUTTON) -->
   <div style="margin-top:1.2rem;">
@@ -6102,7 +6533,7 @@
       </span>
       <span class="toggle-indicator">▶ View Timetable Management</span>
     </button>
-    <div id="adminTimetableContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminTimetableContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminTimetableCard">
         <div class="section-heading">
           <div>
@@ -6154,6 +6585,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-timetable -->
+
+  <!-- ADMIN PAGE: MASTER GRADEBOOK & SCORESHEET -->
+  <div id="adminPage-scoresheet" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>General Assignment Score Sheet & Master Gradebook</strong>
+      </div>
+      <span class="badge badge-purple">Academic Records</span>
+    </div>
 
   <!-- 3. CBT ASSESSMENT & EXAM SCORES SCATTER PLOT & VISUALIZATIONS -->
   <section class="admin-viz-card" id="adminScoresheetVizCard" style="margin-top:1.5rem;">
@@ -6200,7 +6643,7 @@
       </span>
       <span class="toggle-indicator">▶ View Master Gradebook</span>
     </button>
-    <div id="adminScoresheetContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminScoresheetContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminScoresheetCard">
         <div class="section-heading">
           <div>
@@ -6261,6 +6704,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-scoresheet -->
+
+  <!-- ADMIN PAGE: SCHOOL-WIDE LEADERBOARD -->
+  <div id="adminPage-leaderboard" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>School-Wide Student Leaderboard & Merit Rankings</strong>
+      </div>
+      <span class="badge badge-gold">Merit Rankings</span>
+    </div>
 
   <!-- 4. ACADEMIC LEADERBOARD SCATTER PLOT & RANKINGS VISUALIZATIONS -->
   <section class="admin-viz-card" id="adminLeaderboardVizCard" style="margin-top:1.5rem;">
@@ -6307,7 +6762,7 @@
       </span>
       <span class="toggle-indicator">▶ View School-Wide Student Leaderboard</span>
     </button>
-    <div id="adminLeaderboardContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminLeaderboardContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminLeaderboardCard">
         <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
           <div>
@@ -6367,6 +6822,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-leaderboard -->
+
+  <!-- ADMIN PAGE: NOTICES & BULLETINS -->
+  <div id="adminPage-notices" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>School Notices & Staff Bulletins Hub</strong>
+      </div>
+      <span class="badge badge-blue">Communications</span>
+    </div>
 
   <!-- 5. SCHOOL NOTICES & BULLETINS DATA VISUALIZATIONS -->
   <section class="admin-viz-card" id="adminNoticesVizCard" style="margin-top:1.5rem;">
@@ -6413,7 +6880,7 @@
       </span>
       <span class="toggle-indicator">▶ View Notices Hub</span>
     </button>
-    <div id="adminNoticesContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminNoticesContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminNoticesCard">
         <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
           <div>
@@ -6484,6 +6951,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-notices -->
+
+  <!-- ADMIN PAGE: LEARNING RESOURCES REPOSITORY -->
+  <div id="adminPage-resources" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Learning Resources (Past Questions & Textbooks Repository)</strong>
+      </div>
+      <span class="badge badge-green">E-Library</span>
+    </div>
 
   <!-- ADMIN LEARNING RESOURCES (COLLAPSIBLE BUTTON) -->
   <div style="margin-top:1.2rem;">
@@ -6497,7 +6976,7 @@
       </span>
       <span class="toggle-indicator">▶ View Resources</span>
     </button>
-    <div id="adminResourcesContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminResourcesContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminResourcesCard">
         <div class="section-heading">
           <div>
@@ -6537,6 +7016,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-resources -->
+
+  <!-- ADMIN PAGE: FEES & BILLING -->
+  <div id="adminPage-fees" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>School Fees & Billing Management</strong>
+      </div>
+      <span class="badge badge-green">Tuition & Billing</span>
+    </div>
 
   <!-- ADMIN SCHOOL FEES & BILLING MANAGEMENT (COLLAPSIBLE BUTTON) -->
   <div style="margin-top:1.2rem;">
@@ -6550,7 +7041,7 @@
       </span>
       <span class="toggle-indicator">▶ View Fees & Billing</span>
     </button>
-    <div id="adminFeesContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminFeesContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <!-- Paystack Tuition Integration Bar -->
       <div style="background:linear-gradient(135deg, rgba(11,45,75,.06) 0%, rgba(3,105,161,.1) 100%); border:1px solid rgba(3,105,161,.25); border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
         <div style="display:flex; align-items:center; gap:.8rem;">
@@ -6703,6 +7194,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-fees -->
+
+  <!-- ADMIN PAGE: STAFF PAYROLL -->
+  <div id="adminPage-payroll" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Staff Payroll & Salary Remittance Management</strong>
+      </div>
+      <span class="badge badge-gold">Payroll</span>
+    </div>
 
   <!-- 6. STAFF PAYROLL & REMITTANCE DATA VISUALIZATIONS -->
   <section class="admin-viz-card" id="adminPayrollVizCard" style="margin-top:1.5rem;">
@@ -6749,7 +7252,7 @@
       </span>
       <span class="toggle-indicator">▶ View Payroll Management</span>
     </button>
-    <div id="adminPayrollContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminPayrollContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <!-- Paystack Automated Payroll Remittance Bar -->
       <div style="background:linear-gradient(135deg, rgba(11,45,75,.06) 0%, rgba(22,163,74,.1) 100%); border:1px solid rgba(22,163,74,.25); border-radius:12px; padding:1rem 1.25rem; margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem;">
         <div style="display:flex; align-items:center; gap:.8rem;">
@@ -6873,6 +7376,19 @@
         </div>
       </section>
     </div>
+  </div>
+  </div> <!-- /#adminPage-payroll -->
+
+  <!-- ADMIN PAGE: FINANCIAL RECORD BOOK & BALANCE SHEET -->
+  <div id="adminPage-ledger" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Financial Record Book & Balance Sheet</strong>
+      </div>
+      <span class="badge badge-gold">General Ledger</span>
+    </div>
 
     <!-- 7. FINANCIAL LEDGER & REVENUE FLOW DATA VISUALIZATIONS -->
     <section class="admin-viz-card" id="adminLedgerVizCard" style="margin-top:1.5rem;">
@@ -6921,7 +7437,7 @@
       </button>
     </div>
 
-    <div id="adminLedgerContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminLedgerContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <!-- Hero Header -->
       <section class="aloc-hero-card" style="background:linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b2d4b 100%);">
         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
@@ -7082,6 +7598,18 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-ledger -->
+
+  <!-- ADMIN PAGE: ADMINISTRATOR GOVERNANCE & SECURITY AUDIT -->
+  <div id="adminPage-admins" class="admin-workspace-page hidden" style="display:none;">
+    <div class="workspace-page-top-nav">
+      <div class="workspace-crumb">
+        <button type="button" class="btn-sm btn-sm-outline" onclick="selectAdminWorkspaceDropdownItem('overview')">← Back to Overview</button>
+        <span>/</span>
+        <strong>Administrator Governance & Security Audit Hub</strong>
+      </div>
+      <span class="badge badge-red">Security & RBAC</span>
+    </div>
 
   <!-- 9. ADMINISTRATOR GOVERNANCE & SECURITY AUDIT (VISUALS & COLLAPSIBLE WORKSPACE) -->
   <div style="margin-top:1.5rem;" id="adminAdminsSection">
@@ -7131,7 +7659,7 @@
     </button>
 
     <!-- Collapsible Content -->
-    <div id="adminAdminsContent" class="collapsible-content" style="display:none; margin-top:1rem;">
+    <div id="adminAdminsContent" class="collapsible-content" style="display:block !important; margin-top:1rem;">
       <section class="card" id="adminAdminsCard">
         <div class="section-heading" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
           <div>
@@ -7219,6 +7747,7 @@
       </section>
     </div>
   </div>
+  </div> <!-- /#adminPage-admins -->
   </div> <!-- /#adminMainContent -->
 </div>
 
@@ -8587,6 +9116,135 @@
 <div id="campusChatModal" class="modal-overlay hidden" style="display:none; z-index:9999; padding: 1rem;">
   <div class="modal-card" style="max-width: 1080px; width: 100%; height: 90vh; max-height: 820px; padding: 0; overflow: hidden; display: flex; flex-direction: column; border-radius: 18px; border: 1px solid var(--border);">
     <div id="modalChatMount" style="height: 100%; display: flex; flex-direction: column;"></div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL (STUDENT, STAFF & ADMIN) -->
+<div id="changePasswordModal" class="modal-overlay hidden" style="display:none; z-index:99998; padding: 1rem; align-items:center; justify-content:center;">
+  <div class="modal-card" style="max-width:480px; width:100%; padding:1.8rem; border-radius:18px; background:var(--card-bg, #fff); border:1px solid var(--border); box-shadow:0 20px 45px rgba(0,0,0,0.2);">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
+      <div>
+        <h3 style="margin:0 0 .3rem; font-size:1.35rem; color:var(--text); font-weight:850;">🔑 Change Account Password</h3>
+        <p style="margin:0; font-size:.82rem; color:var(--muted);">Secure your portal account with an updated personal password.</p>
+      </div>
+      <button type="button" onclick="schoolController.closeChangePasswordModal()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--muted); line-height:1;">✕</button>
+    </div>
+
+    <div id="changePasswordAlert" style="display:none; padding:.75rem 1rem; border-radius:10px; font-size:.84rem; margin-bottom:1rem; font-weight:600;"></div>
+
+    <form id="changePasswordForm" onsubmit="schoolController.submitChangePassword(event)">
+      <div style="margin-bottom:1.1rem;">
+        <label for="changeCurrentPassword" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">Current Password *</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="changeCurrentPassword" required placeholder="Enter your current password" style="width:100%; padding:.7rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem;">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.1rem;">
+        <label for="changeNewPassword" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">New Password * (Min. 6 characters)</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="changeNewPassword" required minlength="6" placeholder="Choose a strong new password" style="width:100%; padding:.7rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem;">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:1.35rem;">
+        <label for="changeConfirmPassword" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">Confirm New Password *</label>
+        <div class="password-input-wrapper">
+          <input type="password" id="changeConfirmPassword" required minlength="6" placeholder="Re-enter your new password" style="width:100%; padding:.7rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem;">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:.65rem;">
+        <button type="button" class="btn-sm" onclick="schoolController.closeChangePasswordModal()" style="padding:.65rem 1.15rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:700; cursor:pointer;">Cancel</button>
+        <button type="submit" id="changePasswordSubmitBtn" class="btn-primary" style="padding:.65rem 1.4rem; border-radius:10px; font-weight:800; cursor:pointer;">Update & Secure Password</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- FORGOT PASSWORD & RECOVERY MODAL (STUDENT, STAFF & ADMIN VIA EMAIL) -->
+<div id="forgotPasswordModal" class="modal-overlay hidden" style="display:none; z-index:99998; padding: 1rem; align-items:center; justify-content:center;">
+  <div class="modal-card" style="max-width:500px; width:100%; padding:1.85rem; border-radius:18px; background:var(--card-bg, #fff); border:1px solid var(--border); box-shadow:0 20px 45px rgba(0,0,0,0.2);">
+    <!-- Modal Header -->
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.25rem;">
+      <div style="display:flex; align-items:center; gap:.75rem;">
+        <div style="width:42px; height:42px; border-radius:12px; background:rgba(2,132,199,.1); display:flex; align-items:center; justify-content:center; font-size:1.4rem;">🔐</div>
+        <div>
+          <h3 style="margin:0 0 .25rem; font-size:1.35rem; color:var(--text); font-weight:850;">Password Recovery</h3>
+          <p style="margin:0; font-size:.8rem; color:var(--muted);">Retrieve access via your registered Gmail account</p>
+        </div>
+      </div>
+      <button type="button" onclick="schoolController.closeForgotPasswordModal()" style="background:none; border:none; font-size:1.3rem; cursor:pointer; color:var(--muted); line-height:1;">✕</button>
+    </div>
+
+    <!-- Step 1: Request Recovery Code -->
+    <div id="forgotStep1">
+      <div id="forgotStep1Alert" style="display:none; padding:.75rem 1rem; border-radius:10px; font-size:.84rem; margin-bottom:1rem; font-weight:600;"></div>
+      <p style="font-size:.85rem; color:var(--muted); line-height:1.5; margin:0 0 1.25rem;">
+        Enter your registered email address below. We will send a secure <strong>6-digit recovery code</strong> and direct link to your Gmail so you can set a new password.
+      </p>
+      <form id="forgotStep1Form" onsubmit="schoolController.submitForgotPassword(event)">
+        <div style="margin-bottom:1.1rem;">
+          <label for="forgotEmailInput" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">Registered Email Address *</label>
+          <input type="email" id="forgotEmailInput" required placeholder="e.g. yourname@gmail.com" autocomplete="email" style="width:100%; padding:.72rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem;">
+        </div>
+        <div style="margin-bottom:1.4rem;">
+          <label for="forgotRoleSelect" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">Portal Role (Optional)</label>
+          <select id="forgotRoleSelect" style="width:100%; padding:.72rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem; font-weight:600;">
+            <option value="">Any Role (Auto-Detect)</option>
+            <option value="student">Student Portal</option>
+            <option value="staff">Staff / Teacher Portal</option>
+            <option value="admin">Administrator Portal</option>
+          </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:.65rem;">
+          <button type="button" class="btn-sm" onclick="schoolController.closeForgotPasswordModal()" style="padding:.65rem 1.15rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-weight:700; cursor:pointer;">Cancel</button>
+          <button type="submit" id="forgotStep1SubmitBtn" class="btn-primary" style="padding:.65rem 1.4rem; border-radius:10px; font-weight:800; cursor:pointer;">Send Recovery Code ✉️</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Step 2: Code Verification & Set New Password -->
+    <div id="forgotStep2" style="display:none;">
+      <div id="forgotStep2Alert" style="display:none; padding:.75rem 1rem; border-radius:10px; font-size:.84rem; margin-bottom:1rem; font-weight:600;"></div>
+      <div style="background:rgba(2,132,199,.06); border:1px dashed #0284c7; border-radius:12px; padding:.9rem 1rem; margin-bottom:1.25rem;">
+        <span style="font-size:.76rem; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.5px;">Verification code dispatched to:</span>
+        <div id="forgotStep2EmailDisplay" style="font-weight:850; font-size:.95rem; color:var(--primary); margin-top:.2rem; word-break:break-all;"></div>
+      </div>
+      <form id="forgotStep2Form" onsubmit="schoolController.submitResetPassword(event)">
+        <input type="hidden" id="forgotStep2EmailHidden" value="">
+        <input type="hidden" id="resetSecurityToken" value="">
+
+        <div style="margin-bottom:1.1rem;">
+          <label for="resetSecurityCode" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">6-Digit Security Code *</label>
+          <input type="text" id="resetSecurityCode" maxlength="6" placeholder="123456" pattern="[0-9]{6}" autocomplete="one-time-code" style="width:100%; padding:.72rem .9rem; border-radius:10px; border:1.5px solid #0284c7; background:var(--bg); color:var(--primary); font-size:1.35rem; font-family:monospace; letter-spacing:4px; text-align:center; font-weight:900;">
+        </div>
+
+        <div style="margin-bottom:1.1rem;">
+          <label for="resetNewPassword" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">New Password * (Min. 6 characters)</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="resetNewPassword" required minlength="6" placeholder="Enter your new secure password" style="width:100%; padding:.7rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem;">
+            <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:1.35rem;">
+          <label for="resetConfirmPassword" style="display:block; font-size:.82rem; font-weight:750; color:var(--text); margin-bottom:.35rem;">Confirm New Password *</label>
+          <div class="password-input-wrapper">
+            <input type="password" id="resetConfirmPassword" required minlength="6" placeholder="Re-enter your new password" style="width:100%; padding:.7rem .9rem; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text); font-size:.88rem;">
+            <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <button type="button" onclick="document.getElementById('forgotStep2').style.display='none'; document.getElementById('forgotStep1').style.display='block';" style="background:none; border:none; color:var(--primary); font-size:.82rem; font-weight:700; cursor:pointer;">← Resend / Change Email</button>
+          <button type="submit" id="forgotStep2SubmitBtn" class="btn-primary" style="padding:.65rem 1.4rem; border-radius:10px; font-weight:800; cursor:pointer;">Reset & Sign In ✓</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 

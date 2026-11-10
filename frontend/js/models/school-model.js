@@ -1037,16 +1037,28 @@ const schoolModel = {
     throw new Error((res.data && res.data.message) || 'Failed to send message.');
   },
 
-  async deleteChatMessage(messageId) {
+  async deleteChatMessage(messageId, deleteMode = 'for_everyone') {
     const res = await this.safeFetch('api/chat.php?action=delete_message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message_id: messageId })
+      body: JSON.stringify({ message_id: messageId, delete_mode: deleteMode })
     });
     if (res.ok && res.data && res.data.success) {
       return res.data;
     }
     throw new Error((res.data && res.data.message) || 'Failed to delete message.');
+  },
+
+  async clearChat(type, target, clearMode = 'for_me') {
+    const res = await this.safeFetch('api/chat.php?action=clear_chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, target, clear_mode: clearMode })
+    });
+    if (res.ok && res.data && res.data.success) {
+      return res.data;
+    }
+    throw new Error((res.data && res.data.message) || 'Failed to clear chat.');
   },
 
   async pollChatUnread() {
@@ -1055,6 +1067,60 @@ const schoolModel = {
       return res.data;
     }
     return { success: false, total_unread_dms: 0, latest_general_msg_id: 0 };
+  },
+
+  /* ------------------------------------------------------------------------
+     PASSWORD MANAGEMENT & ACCOUNT RECOVERY
+     ------------------------------------------------------------------------ */
+  async changePassword(currentPassword, newPassword, confirmPassword) {
+    const res = await this.safeFetch('api/auth.php?action=change_password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword
+      })
+    });
+    if (res.ok && res.data && res.data.success) {
+      return res.data;
+    }
+    throw new Error((res.data && res.data.message) || 'Password change failed.');
+  },
+
+  async forgotPassword(email, role) {
+    const res = await this.safeFetch('api/auth.php?action=forgot_password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, role })
+    });
+    if (res.ok && res.data && res.data.success) {
+      return res.data;
+    }
+    throw new Error((res.data && res.data.message) || 'Failed to request password recovery.');
+  },
+
+  async resetPassword(payload) {
+    const res = await this.safeFetch('api/auth.php?action=reset_password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok && res.data && res.data.success) {
+      return res.data;
+    }
+    throw new Error((res.data && res.data.message) || 'Failed to reset password.');
+  },
+
+  /* ------------------------------------------------------------------------
+     PORTAL LIVE REAL-TIME SYNC
+     ------------------------------------------------------------------------ */
+  async liveSync() {
+    const res = await this.safeFetch('api/auth.php?action=live_sync');
+    if (res.ok && res.data && res.data.success) {
+      return res.data;
+    }
+    return { success: false, logged_in: false };
   },
 
   /* ------------------------------------------------------------------------

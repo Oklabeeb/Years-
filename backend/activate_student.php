@@ -142,6 +142,15 @@ $loginUrlWithId = $portalUrl . (!empty($assignedStudentId) ? '?student_id=' . ur
   }
   input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15); background: #ffffff; }
 
+  .password-input-wrapper { position: relative; display: flex; align-items: center; width: 100%; }
+  .password-input-wrapper input { width: 100%; padding-right: 2.8rem; }
+  .password-toggle-btn {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    background: transparent; border: none; cursor: pointer; padding: 4px;
+    font-size: 1.15rem; line-height: 1; color: var(--muted); border-radius: 6px;
+  }
+  .password-toggle-btn:hover { color: var(--primary); background: rgba(0,0,0,0.05); }
+
   .btn-submit {
     width: 100%;
     padding: 0.95rem;
@@ -236,12 +245,18 @@ $loginUrlWithId = $portalUrl . (!empty($assignedStudentId) ? '?student_id=' . ur
 
       <div class="form-group">
         <label for="newPassword">Create Password (min. 6 characters)</label>
-        <input type="password" id="newPassword" name="newPassword" placeholder="Enter secure password" required minlength="6" autocomplete="new-password">
+        <div class="password-input-wrapper">
+          <input type="password" id="newPassword" name="newPassword" placeholder="Enter secure password" required minlength="6" autocomplete="new-password">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
       </div>
 
       <div class="form-group">
         <label for="confirmPassword">Confirm Password</label>
-        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="6" autocomplete="new-password">
+        <div class="password-input-wrapper">
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirm your password" required minlength="6" autocomplete="new-password">
+          <button type="button" class="password-toggle-btn" aria-label="Toggle password visibility" title="Show password">👁️</button>
+        </div>
       </div>
 
       <button type="submit" class="btn-submit" id="submitBtn">
@@ -258,6 +273,23 @@ $loginUrlWithId = $portalUrl . (!empty($assignedStudentId) ? '?student_id=' . ur
     </div>
 
     <script>
+      document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.password-toggle-btn');
+        if (!btn) return;
+        const wrap = btn.closest('.password-input-wrapper');
+        if (!wrap) return;
+        const input = wrap.querySelector('input');
+        if (!input) return;
+        if (input.type === 'password') {
+          input.type = 'text';
+          btn.textContent = '🙈';
+          btn.setAttribute('title', 'Hide password');
+        } else {
+          input.type = 'password';
+          btn.textContent = '👁️';
+          btn.setAttribute('title', 'Show password');
+        }
+      });
       const activationToken = <?php echo json_encode($token); ?>;
       const assignedId = <?php echo json_encode($assignedStudentId); ?>;
 

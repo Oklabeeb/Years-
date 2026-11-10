@@ -170,6 +170,9 @@ const schoolController = {
   },
 
   async logout() {
+    this.stopPortalLiveSync();
+    this.stopBackgroundUnreadPolling();
+    this.stopChatPolling();
     try {
       await this.model.logout();
       window.location.reload();
@@ -3116,16 +3119,421 @@ const schoolController = {
     }
   },
 
+  async promptDeleteChatMessage(messageId, isMine, isGroup) {
+    const isAdmin = (schoolModel.user && schoolModel.user.role === 'admin');
+
+    if (isGroup) {
+      if (!isAdmin && !isMine) {
+        alert('You can only delete your own messages in the Community Group.');
+        return;
+      }
+
+      let choice = null;
+      if (isAdmin && !isMine) {
+        if (confirm('Admin action: Delete this message for EVERYONE in the Community Group?\n\n• OK = Delete for Everyone\n• Cancel = Choose delete for me only')) {
+          choice = 'for_everyone';
+        } else if (confirm('Delete this message for yourself only from your view?')) {
+          choice = 'for_me';
+        } else {
+          return;
+        }
+      } else {
+        const forEveryone = confirm('Delete message for EVERYONE in the Community Group?\n\n• OK = Delete for Everyone\n• Cancel = Choose delete for me only');
+        if (forEveryone) {
+          choice = 'for_everyone';
+        } else if (confirm('Delete this message for yourself only from your view?')) {
+          choice = 'for_me';
+        } else {
+          return;
+        }
+      }
+
+      try {
+        await schoolModel.deleteChatMessage(messageId, choice);
+        SchoolView.removeChatMessage(messageId);
+        this.showToast(choice === 'for_everyone' ? 'Message deleted for everyone' : 'Message deleted from your view', 'info');
+      } catch (err) {
+        alert('Failed to delete message: ' + (err.message || err));
+      }
+      return;
+    }
+
+    // Direct Message (DM)
+    if (isMine) {
+      const forEveryone = confirm('Delete this message in Direct Message?\n\n• OK = Delete for Everyone\n• Cancel = Choose delete for me only');
+      let choice = null;
+      if (forEveryone) {
+        choice = 'for_everyone';
+      } else if (confirm('Delete this message from your end only? (The recipient will still see it).')) {
+        choice = 'for_me';
+      } else {
+        return;
+      }
+
+      try {
+        await schoolModel.deleteChatMessage(messageId, choice);
+        SchoolView.removeChatMessage(messageId);
+        this.showToast(choice === 'for_everyone' ? 'Message deleted for everyone' : 'Message deleted from your end', 'info');
+      } catch (err) {
+        alert('Failed to delete message: ' + (err.message || err));
+      }
+    } else {
+      if (!confirm('Delete this message from your end only? (The sender will still see it).')) {
+        return;
+      }
+      try {
+        await schoolModel.deleteChatMessage(messageId, 'for_me');
+        SchoolView.removeChatMessage(messageId);
+        this.showToast('Message deleted from your end', 'info');
+      } catch (err) {
+        alert('Failed to delete message: ' + (err.message || err));
+      }
+    }
+  },
+
+  async handleClearChatPrompt() {
+    const type = this._chatState.activeType || 'group';
+    const target = this._chatState.activeTarget || 'general';
+    const isAdmin = (schoolModel.user && schoolModel.user.role === 'admin');
+
+    if (type === 'dm') {
+      if (!confirm('Clear this entire direct message conversation from your end?\n\n• Note: The other party will still see their copy of the conversation.')) {
+        return;
+      }
+      try {
+        await schoolModel.clearChat('dm', target, 'for_me');
+        const stream = document.getElementById('chatMessagesStream');
+        if (stream) {
+          stream.innerHTML = '<div class="wa-date-divider"><span>Conversation cleared from your end</span></div>';
+        }
+        this.showToast('Direct chat cleared from your end', 'info');
+      } catch (err) {
+        alert('Failed to clear chat: ' + (err.message || err));
+      }
+      return;
+    }
+
+    if (isAdmin) {
+      const forEveryone = confirm('Admin Action: Clear the Community Group chat for EVERYONE?\n\n• OK = Clear for Everyone\n• Cancel = Clear only from your end');
+      const mode = forEveryone ? 'for_everyone' : (confirm('Clear community chat from your view only?') ? 'for_me' : null);
+      if (!mode) return;
+
+      try {
+        await schoolModel.clearChat('group', target, mode);
+        const stream = document.getElementById('chatMessagesStream');
+        if (stream) {
+          stream.innerHTML = `<div class="wa-date-divider"><span>${mode === 'for_everyone' ? 'Community group chat cleared for everyone by Admin' : 'Community chat cleared from your view'}</span></div>`;
+        }
+        this.showToast(mode === 'for_everyone' ? 'Community chat cleared for everyone' : 'Community chat cleared from your view', 'info');
+      } catch (err) {
+        alert('Failed to clear group chat: ' + (err.message || err));
+      }
+    } else {
+      if (!confirm('Clear the Community Group chat history from your view?\n\n• Note: Other members will still see messages.')) {
+        return;
+      }
+      try {
+        await schoolModel.clearChat('group', target, 'for_me');
+        const stream = document.getElementById('chatMessagesStream');
+        if (stream) {
+          stream.innerHTML = '<div class="wa-date-divider"><span>Community chat cleared from your view</span></div>';
+        }
+        this.showToast('Community chat cleared from your view', 'info');
+      } catch (err) {
+        alert('Failed to clear chat: ' + (err.message || err));
+      }
+    }
+  },
+
   async handleDeleteChatMessage(messageId) {
-    if (!confirm('Are you sure you want to delete this message?')) {
+    await this.promptDeleteChatMessage(messageId, true, false);
+  },
+
+  showToast(message, type = 'info') {
+    let container = document.getElementById('appToastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'appToastContainer';
+      container.style.cssText = 'position:fixed; bottom:24px; right:24px; z-index:999999; display:flex; flex-direction:column; gap:8px; pointer-events:none;';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    const bg = type === 'success' ? '#10b981' : type === 'danger' ? '#ef4444' : '#1e293b';
+    toast.style.cssText = `background:${bg}; color:#ffffff; padding:12px 18px; border-radius:10px; font-size:.88rem; font-weight:600; box-shadow:0 10px 25px rgba(0,0,0,.25); pointer-events:auto; transition:all .3s ease; transform:translateY(10px); opacity:0; max-width:380px; display:flex; align-items:center; gap:8px;`;
+    toast.innerHTML = message;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.transform = 'translateY(0)';
+      toast.style.opacity = '1';
+    }, 20);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      setTimeout(() => toast.remove(), 300);
+    }, 4500);
+  },
+
+  /* PASSWORD SELF-SERVICE & RECOVERY CONTROLS */
+  openChangePasswordModal() {
+    const modal = document.getElementById('changePasswordModal');
+    if (!modal) return;
+    const alertEl = document.getElementById('changePassAlert');
+    if (alertEl) alertEl.innerHTML = '';
+    const form = document.getElementById('changePasswordForm');
+    if (form) form.reset();
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+    const input = document.getElementById('changeCurrentPassword');
+    if (input) input.focus();
+  },
+
+  closeChangePasswordModal() {
+    const modal = document.getElementById('changePasswordModal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.add('hidden');
+    }
+  },
+
+  async submitChangePassword(event) {
+    if (event) event.preventDefault();
+    const alertEl = document.getElementById('changePassAlert');
+    const cur = document.getElementById('changeCurrentPassword')?.value || '';
+    const newPass = document.getElementById('changeNewPassword')?.value || '';
+    const conf = document.getElementById('changeConfirmPassword')?.value || '';
+
+    if (newPass.length < 8) {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#ef4444;">⚠️ New password must be at least 8 characters long.</span>';
+      return;
+    }
+    if (newPass !== conf) {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#ef4444;">⚠️ New password and confirmation do not match.</span>';
       return;
     }
 
     try {
-      await schoolModel.deleteChatMessage(messageId);
-      SchoolView.removeChatMessage(messageId);
+      if (alertEl) alertEl.innerHTML = '<span style="color:#3b82f6;">Updating password securely...</span>';
+      const res = await schoolModel.changePassword(cur, newPass, conf);
+      if (res && res.success) {
+        if (alertEl) alertEl.innerHTML = '<span style="color:#10b981;">✅ Password changed successfully!</span>';
+        this.showToast('🔑 Password changed successfully!', 'success');
+        setTimeout(() => this.closeChangePasswordModal(), 1500);
+      } else {
+        if (alertEl) alertEl.innerHTML = `<span style="color:#ef4444;">⚠️ ${res.error || 'Failed to change password'}</span>`;
+      }
     } catch (err) {
-      alert('Failed to delete message: ' + err.message);
+      if (alertEl) alertEl.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message || 'Error changing password'}</span>`;
+    }
+  },
+
+  openForgotPasswordModal(prefillEmail = '', prefillRole = 'student') {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.classList.remove('hidden');
+
+    const step1 = document.getElementById('forgotPassStep1');
+    const step2 = document.getElementById('forgotPassStep2');
+    if (step1) step1.style.display = 'block';
+    if (step2) step2.style.display = 'none';
+
+    const alert1 = document.getElementById('forgotPassAlert');
+    const alert2 = document.getElementById('resetPassAlert');
+    if (alert1) alert1.innerHTML = '';
+    if (alert2) alert2.innerHTML = '';
+
+    if (prefillEmail) {
+      const emailInput = document.getElementById('forgotPassEmail');
+      if (emailInput) emailInput.value = prefillEmail;
+    }
+    if (prefillRole) {
+      const roleSelect = document.getElementById('forgotPassRole');
+      if (roleSelect) roleSelect.value = prefillRole;
+    }
+  },
+
+  closeForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.add('hidden');
+    }
+  },
+
+  async submitForgotPassword(event) {
+    if (event) event.preventDefault();
+    const alertEl = document.getElementById('forgotPassAlert');
+    const email = document.getElementById('forgotPassEmail')?.value?.trim() || '';
+    const role = document.getElementById('forgotPassRole')?.value || 'student';
+
+    if (!email) {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#ef4444;">Please enter your registered Gmail / Email address.</span>';
+      return;
+    }
+
+    try {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#3b82f6;">Searching account & sending recovery code...</span>';
+      const res = await schoolModel.forgotPassword(email, role);
+      if (res && res.success) {
+        const step1 = document.getElementById('forgotPassStep1');
+        const step2 = document.getElementById('forgotPassStep2');
+        if (step1) step1.style.display = 'none';
+        if (step2) step2.style.display = 'block';
+
+        const resetEmail = document.getElementById('resetPassEmail');
+        if (resetEmail) resetEmail.value = email;
+
+        const alert2 = document.getElementById('resetPassAlert');
+        if (alert2) alert2.innerHTML = `<span style="color:#10b981;">📬 ${res.message || 'Recovery code dispatched to your email!'}</span>`;
+        this.showToast('📧 Recovery email dispatched to your inbox!', 'success');
+      } else {
+        if (alertEl) alertEl.innerHTML = `<span style="color:#ef4444;">⚠️ ${res.error || 'Account not found'}</span>`;
+      }
+    } catch (err) {
+      if (alertEl) alertEl.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message || 'Failed to dispatch recovery code'}</span>`;
+    }
+  },
+
+  async submitResetPassword(event) {
+    if (event) event.preventDefault();
+    const alertEl = document.getElementById('resetPassAlert');
+    const email = document.getElementById('resetPassEmail')?.value?.trim() || '';
+    const code = document.getElementById('resetPassCode')?.value?.trim() || '';
+    const token = document.getElementById('resetPassToken')?.value?.trim() || '';
+    const newPass = document.getElementById('resetNewPassword')?.value || '';
+    const conf = document.getElementById('resetConfirmPassword')?.value || '';
+
+    if (newPass.length < 8) {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#ef4444;">⚠️ New password must be at least 8 characters.</span>';
+      return;
+    }
+    if (newPass !== conf) {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#ef4444;">⚠️ Passwords do not match.</span>';
+      return;
+    }
+
+    try {
+      if (alertEl) alertEl.innerHTML = '<span style="color:#3b82f6;">Verifying code and resetting password...</span>';
+      const res = await schoolModel.resetPassword({
+        email: email,
+        code: code,
+        token: token,
+        new_password: newPass,
+        confirm_password: conf
+      });
+
+      if (res && res.success) {
+        if (alertEl) alertEl.innerHTML = '<span style="color:#10b981;">🎉 Password reset successful! You can now log in.</span>';
+        this.showToast('✅ Password reset successful! You may now login.', 'success');
+        setTimeout(() => {
+          this.closeForgotPasswordModal();
+          const passInput = document.getElementById('loginPassword');
+          if (passInput) passInput.focus();
+        }, 1800);
+      } else {
+        if (alertEl) alertEl.innerHTML = `<span style="color:#ef4444;">⚠️ ${res.error || 'Invalid code or expired token'}</span>`;
+      }
+    } catch (err) {
+      if (alertEl) alertEl.innerHTML = `<span style="color:#ef4444;">⚠️ ${err.message || 'Error resetting password'}</span>`;
+    }
+  },
+
+  checkUrlForPasswordReset() {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('reset_token');
+      const email = urlParams.get('email');
+      if (token) {
+        this.openForgotPasswordModal(email || '', 'student');
+        const step1 = document.getElementById('forgotPassStep1');
+        const step2 = document.getElementById('forgotPassStep2');
+        if (step1) step1.style.display = 'none';
+        if (step2) step2.style.display = 'block';
+
+        const tokenInput = document.getElementById('resetPassToken');
+        if (tokenInput) tokenInput.value = token;
+        const emailInput = document.getElementById('resetPassEmail');
+        if (emailInput && email) emailInput.value = email;
+
+        const alert2 = document.getElementById('resetPassAlert');
+        if (alert2) alert2.innerHTML = '<span style="color:#3b82f6;">🔑 Reset token loaded from your verification link. Enter your new password below.</span>';
+      }
+    } catch (e) {
+      console.warn('URL reset param parse error:', e);
+    }
+  },
+
+  /* REAL-TIME LIVE SYNC (NO MANUAL REFRESH) */
+  startPortalLiveSync() {
+    this.stopPortalLiveSync();
+    this._liveSyncTimer = setInterval(() => {
+      this.runLiveSyncTick();
+    }, 9000);
+    // Initial sync tick after 3.5 seconds
+    setTimeout(() => this.runLiveSyncTick(), 3500);
+  },
+
+  stopPortalLiveSync() {
+    if (this._liveSyncTimer) {
+      clearInterval(this._liveSyncTimer);
+      this._liveSyncTimer = null;
+    }
+  },
+
+  async runLiveSyncTick() {
+    if (!schoolModel.user) return;
+    try {
+      const sync = await schoolModel.liveSync();
+      if (!sync || !sync.success) return;
+
+      if (!this._lastLiveSyncState) {
+        this._lastLiveSyncState = sync;
+        return;
+      }
+
+      const prev = this._lastLiveSyncState;
+      const role = schoolModel.user.role;
+
+      // 1. Admin Live Sync: New student registrations or payment verifications
+      if (role === 'admin') {
+        const studentChanged = (sync.latest_student_id && sync.latest_student_id !== prev.latest_student_id);
+        const verifChanged = (Number(sync.pending_verifications) !== Number(prev.pending_verifications));
+
+        if (studentChanged || verifChanged) {
+          this.showToast('🔔 Live Update: New student registration or payment verification pending!', 'info');
+          this.loadAdminStudents();
+          this.loadAdminStudentVerifications();
+          this.loadAdminAnalytics();
+        }
+      }
+
+      // 2. Staff Live Sync: New assignment submissions
+      if (role === 'staff') {
+        const submissionsChanged = (Number(sync.total_submissions) !== Number(prev.total_submissions));
+        if (submissionsChanged && Number(sync.total_submissions) > Number(prev.total_submissions)) {
+          this.showToast('📥 Live Update: New student coursework submission received!', 'info');
+          this.loadStaffAssignments();
+          this.loadStaffScoresheet();
+        }
+      }
+
+      // 3. Student Live Sync: Automatic tuition fee unlock
+      if (role === 'student') {
+        if (sync.student_payment_status && sync.student_payment_status !== prev.student_payment_status) {
+          if (sync.student_payment_status === 'paid_monthly' || sync.student_payment_status === 'paid_weekly') {
+            this.showToast('🎉 Live Update: Your tuition payment has been verified! Unlocking portal...', 'success');
+            schoolModel.user.fee_status = sync.student_payment_status;
+            SchoolView.initializeStudent();
+          }
+        }
+      }
+
+      this._lastLiveSyncState = sync;
+    } catch (syncErr) {
+      // background tick error ignored
     }
   },
 

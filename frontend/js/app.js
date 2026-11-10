@@ -1142,7 +1142,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       await SchoolView.initializeStudent();
     }
     schoolController.startBackgroundUnreadPolling();
+    schoolController.startPortalLiveSync();
   } else {
+    // Check if URL contains password reset token
+    if (typeof schoolController !== 'undefined' && typeof schoolController.checkUrlForPasswordReset === 'function') {
+      schoolController.checkUrlForPasswordReset();
+    }
     // Handle redirect after student account activation (?student_id=STU-XXXX)
     try {
       const urlParams = new URLSearchParams(window.location.search);
@@ -1255,81 +1260,35 @@ window.closeStaffWorkspaceDropdown = function() {
 
 window.selectStaffWorkspaceDropdownItem = async function(pageId) {
   closeStaffWorkspaceDropdown();
-  const titles = {
-    school: 'School (ALOC Station)',
-    chat: 'School Chat & DMs',
-    overview: 'Dashboard Overview',
-    roster: 'Course Enrollment Roster',
-    assignments: 'Classwork & Assignments',
-    timetable: 'Teaching Schedule & Meet',
-    scoresheet: 'General Score Sheet',
-    resources: 'Learning Resources (Manual)',
-    payroll: 'My Salary & Remittance',
-    leaderboard: 'Student Leaderboard'
-  };
+  if (typeof SchoolView !== 'undefined' && typeof SchoolView.switchStaffPage === 'function') {
+    SchoolView.switchStaffPage(pageId);
+  }
 
-  document.querySelectorAll('#staffWorkspaceDropdownMenu .ws-dropdown-link').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  const activeBtn = document.querySelector(`#staffWorkspaceDropdownMenu [data-staff-page="${pageId}"]`);
-  if (activeBtn) activeBtn.classList.add('active');
-
-  const badge = document.getElementById('staffWorkspaceActiveBadge');
-  if (badge) badge.textContent = titles[pageId] || 'Overview';
-
-  const schoolPage = document.getElementById('staffSchoolPage');
-  const chatPage = document.getElementById('staffChatPage');
-  const mainContent = document.getElementById('staffMainContent');
-
-  if (pageId === 'school') {
-    if (chatPage) chatPage.classList.add('hidden');
-    if (schoolPage) schoolPage.classList.remove('hidden');
-    if (mainContent) mainContent.style.display = 'none';
-    await schoolController.loadAlocSchool('staff');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else if (pageId === 'chat') {
-    if (schoolPage) schoolPage.classList.add('hidden');
-    if (mainContent) mainContent.style.display = 'none';
-    if (chatPage) chatPage.classList.remove('hidden');
-    await schoolController.openCampusChat('staffChatMount');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else {
-    if (schoolPage) schoolPage.classList.add('hidden');
-    if (chatPage) chatPage.classList.add('hidden');
-    if (mainContent) mainContent.style.display = 'block';
-
-    const scrollMap = {
-      overview: 'staffDashboard',
-      roster: 'staffCourseTitle',
-      assignments: 'staffAssignmentForm',
-      timetable: 'staffTimetableCard',
-      scoresheet: 'staffScoresheetCard',
-      resources: 'staffResourcesCard',
-      payroll: 'staffPayrollContent',
-      leaderboard: 'staffLeaderboardCard'
-    };
-
-    // If section is inside collapsible, expand it
-    if (pageId === 'timetable' && document.getElementById('staffTimetableContent')?.style.display === 'none') {
-      toggleDashboardSection('staffTimetableContent', 'toggleStaffTimetableBtn', 'My Teaching Schedule & Google Meet Classes', '📅');
-    } else if (pageId === 'scoresheet' && document.getElementById('staffScoresheetContent')?.style.display === 'none') {
-      toggleDashboardSection('staffScoresheetContent', 'toggleStaffScoresheetBtn', 'General Score Sheet', '📊');
-    } else if (pageId === 'resources' && document.getElementById('staffResourcesContent')?.style.display === 'none') {
-      toggleDashboardSection('staffResourcesContent', 'toggleStaffResourcesBtn', 'Learning Resources Repository', '📚');
-    } else if (pageId === 'payroll' && document.getElementById('staffPayrollContent')?.style.display === 'none') {
-      toggleDashboardSection('staffPayrollContent', 'toggleStaffPayrollBtn', 'My Salary & Banking Remittance', '💳');
+  try {
+    if (pageId === 'school') {
+      await schoolController.loadAlocSchool('staff');
+    } else if (pageId === 'chat') {
+      await schoolController.openCampusChat('staffChatMount');
+    } else if (pageId === 'roster') {
+      await schoolController.loadStaffRoster();
+    } else if (pageId === 'assignments') {
+      await schoolController.loadStaffAssignments();
+    } else if (pageId === 'timetable') {
+      await schoolController.loadStaffTimetable();
+    } else if (pageId === 'scoresheet') {
+      await schoolController.loadStaffScoresheet();
+    } else if (pageId === 'resources') {
+      await schoolController.loadStaffResources();
+    } else if (pageId === 'payroll') {
+      await schoolController.loadStaffPayrollInfo();
     } else if (pageId === 'leaderboard') {
-      if (document.getElementById('staffLeaderboardContent')?.style.display === 'none') {
-        toggleDashboardSection('staffLeaderboardContent', 'toggleStaffLeaderboardBtn', 'School-Wide Student Leaderboard', '🏆');
-      }
       await schoolController.loadStaffLeaderboard();
+    } else if (pageId === 'overview') {
+      await schoolController.loadStaffLeaderboard();
+      await schoolController.loadStaffAssignments();
     }
-
-    const targetId = scrollMap[pageId];
-    if (targetId) {
-      const el = document.getElementById(targetId);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  } catch (err) {
+    console.warn('Error loading staff section data for ' + pageId, err);
   }
 };
 
@@ -1373,137 +1332,47 @@ window.closeAdminWorkspaceDropdown = function() {
 
 window.selectAdminWorkspaceDropdownItem = async function(pageId) {
   closeAdminWorkspaceDropdown();
-  const titles = {
-    verifications: 'Student Verifications',
-    school: 'School (ALOC Station)',
-    paystack: 'Paystack Payment Gateway',
-    chat: 'Campus Messenger & DMs',
-    overview: 'Operations Overview',
-    students: 'Registered Students',
-    staff: 'Staff Accounts',
-    timetable: 'Timetable Management',
-    scoresheet: 'Gradebook & Scoresheet',
-    resources: 'Educational Resources (Manual)',
-    fees: 'School Fees & Billing',
-    payroll: 'Staff Payroll & Remittance',
-    ledger: 'Record Book & Balance Sheet',
-    leaderboard: 'Student Leaderboard',
-    notices: 'Notices & Bulletins',
-    admins: 'Admin Governance'
-  };
-
-  document.querySelectorAll('#adminWorkspaceDropdownMenu .ws-dropdown-link').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  const activeBtn = document.querySelector(`#adminWorkspaceDropdownMenu [data-admin-page="${pageId}"]`);
-  if (activeBtn) activeBtn.classList.add('active');
-
-  const badge = document.getElementById('adminWorkspaceActiveBadge');
-  if (badge) badge.textContent = titles[pageId] || 'Overview';
-
-  const schoolPage = document.getElementById('adminSchoolPage');
-  const chatPage = document.getElementById('adminChatPage');
-  const mainContent = document.getElementById('adminMainContent');
-
-  if (pageId === 'school') {
-    if (chatPage) chatPage.classList.add('hidden');
-    if (schoolPage) schoolPage.classList.remove('hidden');
-    if (mainContent) mainContent.style.display = 'none';
-    await schoolController.loadAlocSchool('admin');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    return;
+  if (typeof SchoolView !== 'undefined' && typeof SchoolView.switchAdminPage === 'function') {
+    SchoolView.switchAdminPage(pageId);
   }
 
-  if (pageId === 'chat') {
-    if (schoolPage) schoolPage.classList.add('hidden');
-    if (mainContent) mainContent.style.display = 'none';
-    if (chatPage) chatPage.classList.remove('hidden');
-    await schoolController.openCampusChat('adminChatMount');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    return;
-  }
-
-  // Hide standalone School and Chat pages for standard dashboard views
-  if (schoolPage) schoolPage.classList.add('hidden');
-  if (chatPage) chatPage.classList.add('hidden');
-  if (mainContent) mainContent.style.display = 'block';
-
-  if (pageId === 'overview') {
-    await schoolController.loadAdminAnalytics();
-    const sec = document.getElementById('adminPanel');
-    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
-
-  if (pageId === 'paystack') {
-    const paystackContent = document.getElementById('adminPaystackContent');
-    if (paystackContent && (paystackContent.style.display === 'none' || paystackContent.classList.contains('hidden'))) {
-      toggleDashboardSection('adminPaystackContent', 'toggleAdminPaystackBtn', 'Paystack Payment Gateway', '💳');
-    }
-    await schoolController.loadAdminPaystackSettings();
-    const sec = document.getElementById('adminPaystackSection');
-    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    return;
-  }
-
-  const scrollMap = {
-    overview: 'adminPanel',
-    paystack: 'adminPaystackSection',
-    students: 'adminStudentsCard',
-    staff: 'adminStaffCard',
-    timetable: 'adminTimetableCard',
-    scoresheet: 'adminScoresheetCard',
-    resources: 'adminResourcesCard',
-    fees: 'adminFeesContent',
-    payroll: 'adminPayrollContent',
-    ledger: 'adminLedgerSection',
-    leaderboard: 'adminLeaderboardCard',
-    notices: 'adminNoticesCard',
-    admins: 'adminAdminsCard'
-  };
-
-    // If section is inside collapsible, expand it
-    if (pageId === 'students' && document.getElementById('adminStudentsContent')?.style.display === 'none') {
-      toggleDashboardSection('adminStudentsContent', 'toggleAdminStudentsBtn', 'Registered Students Directory', '👥');
-    } else if (pageId === 'staff' && document.getElementById('adminStaffContent')?.style.display === 'none') {
-      toggleDashboardSection('adminStaffContent', 'toggleAdminStaffBtn', 'Staff Account Directory', '👨‍🏫');
-    } else if (pageId === 'timetable' && document.getElementById('adminTimetableContent')?.style.display === 'none') {
-      toggleDashboardSection('adminTimetableContent', 'toggleAdminTimetableBtn', 'School Timetable Management', '📅');
-    } else if (pageId === 'scoresheet' && document.getElementById('adminScoresheetContent')?.style.display === 'none') {
-      toggleDashboardSection('adminScoresheetContent', 'toggleAdminScoresheetBtn', 'General Assignment Score Sheet & Gradebook', '📊');
-    } else if (pageId === 'resources' && document.getElementById('adminResourcesContent')?.style.display === 'none') {
-      toggleDashboardSection('adminResourcesContent', 'toggleAdminResourcesBtn', 'Learning Resources Repository', '📚');
-    } else if (pageId === 'fees' && document.getElementById('adminFeesContent')?.style.display === 'none') {
-      toggleDashboardSection('adminFeesContent', 'toggleAdminFeesBtn', 'School Fees & Billing Management', '💰');
-    } else if (pageId === 'payroll' && document.getElementById('adminPayrollContent')?.style.display === 'none') {
-      toggleDashboardSection('adminPayrollContent', 'toggleAdminPayrollBtn', 'Staff Payroll & Remittance Management', '💳');
-    } else if (pageId === 'ledger') {
-      if (document.getElementById('adminLedgerContent')?.style.display === 'none') {
-        toggleDashboardSection('adminLedgerContent', 'toggleAdminLedgerBtn', 'Financial Record Book & Balance Sheet', '📖');
-      }
-      await schoolController.loadFinancialLedger();
+  try {
+    if (pageId === 'school') {
+      await schoolController.loadAlocSchool('admin');
+    } else if (pageId === 'chat') {
+      await schoolController.openCampusChat('adminChatMount');
+    } else if (pageId === 'paystack') {
+      await schoolController.loadAdminPaystackSettings();
+    } else if (pageId === 'students' || pageId === 'verifications') {
+      await schoolController.loadAdminStudents();
+      await schoolController.loadAdminStudentVerifications();
+    } else if (pageId === 'staff') {
+      await schoolController.loadAdminStaff();
+    } else if (pageId === 'timetable') {
+      await schoolController.loadAdminTimetable();
+    } else if (pageId === 'scoresheet') {
+      await schoolController.loadAdminScoresheet();
     } else if (pageId === 'leaderboard') {
-      if (document.getElementById('adminLeaderboardContent')?.style.display === 'none') {
-        toggleDashboardSection('adminLeaderboardContent', 'toggleAdminLeaderboardBtn', 'School-Wide Student Leaderboard', '🏆');
-      }
       await schoolController.loadAdminLeaderboard();
     } else if (pageId === 'notices') {
-      if (document.getElementById('adminNoticesContent')?.style.display === 'none') {
-        toggleDashboardSection('adminNoticesContent', 'toggleAdminNoticesBtn', 'School Notices & Staff Bulletins Hub', '📢');
-      }
       await schoolController.loadAdminNotices();
+    } else if (pageId === 'resources') {
+      await schoolController.loadAdminResources();
+    } else if (pageId === 'fees') {
+      await schoolController.loadAdminFees();
+    } else if (pageId === 'payroll') {
+      await schoolController.loadAdminPayroll();
+    } else if (pageId === 'ledger') {
+      await schoolController.loadFinancialLedger();
     } else if (pageId === 'admins') {
-      if (document.getElementById('adminAdminsContent')?.style.display === 'none') {
-        toggleDashboardSection('adminAdminsContent', 'toggleAdminAdminsBtn', 'Administrator Governance & Audit Hub', '🛡️');
-      }
       await schoolController.loadAdminManagement();
+      await schoolController.loadAuditLogs();
+    } else if (pageId === 'overview') {
+      await schoolController.loadAdminAnalytics();
     }
-
-    const targetId = scrollMap[pageId];
-    if (targetId) {
-      const el = document.getElementById(targetId);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+  } catch (err) {
+    console.warn('Error loading admin section data for ' + pageId, err);
+  }
 };
 
 // Global click outside listener to auto-close workspace dropdowns
@@ -1530,5 +1399,27 @@ document.addEventListener('keydown', (event) => {
     closeWorkspaceDropdown();
     closeStaffWorkspaceDropdown();
     closeAdminWorkspaceDropdown();
+  }
+});
+
+// Delegated Password Visibility Eye Toggle Listener across all portals & modals
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.password-toggle-btn');
+  if (!btn) return;
+  e.preventDefault();
+  const wrapper = btn.closest('.password-input-wrapper');
+  if (!wrapper) return;
+  const input = wrapper.querySelector('input');
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.textContent = '🙈';
+    btn.title = 'Hide password';
+    btn.setAttribute('aria-label', 'Hide password');
+  } else {
+    input.type = 'password';
+    btn.textContent = '👁️';
+    btn.title = 'Show password';
+    btn.setAttribute('aria-label', 'Show password');
   }
 });

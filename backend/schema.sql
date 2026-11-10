@@ -385,6 +385,7 @@ CREATE TABLE IF NOT EXISTS chat_messages (
     channel_name VARCHAR(50) NOT NULL DEFAULT 'general', -- 'general', or 'direct'
     message TEXT NOT NULL,
     is_read TINYINT(1) NOT NULL DEFAULT 0,
+    deleted_for_users TEXT NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
     INDEX idx_channel (channel_type, channel_name, created_at),
@@ -583,3 +584,22 @@ CREATE TABLE IF NOT EXISTS school_academic_session (
 INSERT INTO school_academic_session (id, current_term, academic_session) 
 VALUES (1, 'Term 1', '2024/2025')
 ON DUPLICATE KEY UPDATE id=id;
+
+-- ==========================================================================
+-- 28. Password Resets & Secure Account Recovery Table
+-- ==========================================================================
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    email VARCHAR(191) NOT NULL,
+    role ENUM('student', 'staff', 'admin') NOT NULL,
+    token VARCHAR(64) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    is_used TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_token (token),
+    INDEX idx_email_code (email, code),
+    CONSTRAINT fk_pw_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+

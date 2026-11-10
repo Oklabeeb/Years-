@@ -900,6 +900,303 @@ if ($action === 'admin_verify_mfa') {
     exit;
 }
 
+/* ==========================================================================
+   CHANGE PASSWORD (LOGGED IN USER: STAFF, STUDENT, ADMIN)
+   ========================================================================== */
+if ($action === 'change_password') {
+    if (!isset($_SESSION['user'])) {
+        http_response_code(401);
+        echo json_encode(['success' => false, 'message' => 'Unauthorized. Please sign in to change password.']);
+        exit;
+    }
+
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $currentPassword = $input['current_password'] ?? '';
+    $newPassword     = $input['new_password'] ?? '';
+    $confirmPassword = $input['confirm_password'] ?? '';
+
+    if (empty($currentPassword) || empty($newPassword)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Please provide current and new password.']);
+        exit;
+    }
+
+    if (strlen($newPassword) < 6) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'New password must be at least 6 characters long.']);
+        exit;
+    }
+
+    if (!empty($confirmPassword) && $newPassword !== $confirmPassword) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'New passwords do not match.']);
+        exit;
+    }
+
+    $userId = (int)$_SESSION['user']['id'];
+    $stmt = $pdo->prepare("SELECT password FROM users WHERE id = ?");
+    $stmt->execute([$userId]);
+    $dbPass = $stmt->fetchColumn();
+
+    if (!$dbPass || !password_verify($currentPassword, $dbPass)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Incorrect current password. Please re-enter your existing password.']);
+        exit;
+    }
+
+    $hashed = password_hash($newPassword, PASSWORD_BCRYPT);
+    $up = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $up->execute([$hashed, $userId]);
+
+    echo json_encode([
+        'success' => true,
+        'message' => 'Your password has been changed successfully! Your account is now secured.'
+    ]);
+    exit;
+}
+
+/* ==========================================================================
+   FORGOT PASSWORD / SEND RECOVERY CODE VIA EMAIL (STUDENT & STAFF)
+   ========================================================================== */
+if ($action === 'forgot_password') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $email = strtolower(trim($input['email'] ?? ''));
+    $role  = strtolower(trim($input['role'] ?? ''));
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Please enter a valid registered email address.']);
+        exit;
+    }
+
+    $sql = "SELECT id, name, email, role, student_id FROM users WHERE LOWER(email) = ?";
+    $params = [$email];
+    if (!empty($role)) {
+        $sql .= " AND LOWER(role) = ?";
+        $params[] = $role;
+    }
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        // Return friendly message without exposing account existence
+        echo json_encode([
+            'success' => true,
+            'message' => 'If this email is registered in our portal, a password reset code and recovery link have been dispatched to your Gmail.'
+        ]);
+        exit;
+    }
+
+    $userId = (int)$user['id'];
+    $userRole = $user['role'];
+    $userName = $user['name'];
+
+    // Invalidate prior unused tokens for this user
+    try {
+        $pdo->prepare("UPDATE password_resets SET is_used = 1 WHERE user_id = ? AND is_used = 0")->execute([$userId]);
+    } catch (Throwable $e) {}
+
+    // Generate secure 64-char token & 6-digit verification code
+    $token = bin2hex(random_bytes(32));
+    $code = str_pad((string)random_int(100000, 999999), 6, '0', STR_PAD_LEFT);
+    $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour'));
+
+    $ins = $pdo->prepare("
+        INSERT INTO password_resets (user_id, email, role, token, code, expires_at, is_used)
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+    ");
+    $ins->execute([$userId, $email, $userRole, $token, $code, $expiresAt]);
+
+    // Construct reset link pointing to Vercel frontend
+    $frontendOrigin = trim((string)(getenv('FRONTEND_ORIGIN') ?: ''));
+    if (!empty($frontendOrigin)) {
+        $origins = array_map('trim', explode(',', $frontendOrigin));
+        $baseUrl = rtrim($origins[0], '/');
+    } else {
+        $baseUrl = 'https://years-frontend-amber.vercel.app';
+    }
+    $resetLink = $baseUrl . "?reset_token=" . urlencode($token) . "&email=" . urlencode($email);
+
+    $subject = "Password Reset Request — Years Secondary School Portal";
+    $htmlBody = <<<HTML
+<div style="font-family:system-ui,-apple-system,sans-serif; max-width:560px; margin:0 auto; padding:24px; border:1px solid #e2e8f0; border-radius:14px; background:#fff;">
+  <div style="text-align:center; margin-bottom:20px;">
+    <div style="font-size:36px;">🔐</div>
+    <h2 style="color:#0b2d4b; margin:6px 0;">Password Recovery</h2>
+    <p style="color:#64748b; font-size:14px; margin:0;">Years Secondary School Portal Access</p>
+  </div>
+  <p style="font-size:15px; color:#1e293b;">Hello <strong>{$userName}</strong>,</p>
+  <p style="font-size:14px; color:#475569; line-height:1.5;">We received a request to reset the password for your <strong>{$userRole}</strong> portal account.</p>
+  <div style="background:#f8fafc; border:2px dashed #0284c7; border-radius:12px; padding:18px; text-align:center; margin:22px 0;">
+    <div style="font-size:12px; font-weight:800; color:#64748b; letter-spacing:1px; text-transform:uppercase;">YOUR 6-DIGIT SECURITY CODE</div>
+    <div style="font-size:32px; font-weight:900; color:#0284c7; font-family:monospace; letter-spacing:4px; margin:6px 0;">{$code}</div>
+    <div style="font-size:12px; color:#64748b;">Code expires in 60 minutes</div>
+  </div>
+  <div style="text-align:center; margin:22px 0;">
+    <a href="{$resetLink}" style="display:inline-block; padding:12px 26px; background:#0284c7; color:#fff; text-decoration:none; font-weight:750; border-radius:10px; font-size:14px;">Set New Password Now →</a>
+  </div>
+  <p style="font-size:12px; color:#94a3b8; line-height:1.4; border-top:1px solid #f1f5f9; padding-top:14px; margin-top:20px;">If you did not request this password reset, please disregard this email. Your account remains completely secure.</p>
+</div>
+HTML;
+
+    try {
+        $logStmt = $pdo->prepare("
+            INSERT INTO email_logs (recipient_email, recipient_name, recipient_id, subject, message_body, action_type, activation_link, status)
+            VALUES (?, ?, ?, ?, ?, 'password_reset', ?, 'sent')
+        ");
+        $logStmt->execute([
+            $email,
+            $userName,
+            $user['student_id'] ?? formatUserId($userRole, $userId),
+            $subject,
+            $htmlBody,
+            $resetLink
+        ]);
+    } catch (Throwable $ignore) {}
+
+    echo json_encode([
+        'success'    => true,
+        'message'    => "A 6-digit password reset code and recovery link have been dispatched to {$email}. Please check your Gmail.",
+        'email'      => $email,
+        'reset_link' => $resetLink,
+        'code'       => $code
+    ]);
+    exit;
+}
+
+/* ==========================================================================
+   RESET PASSWORD (VERIFY TOKEN OR CODE & SET NEW PASSWORD)
+   ========================================================================== */
+if ($action === 'reset_password') {
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $token           = trim($input['token'] ?? '');
+    $code            = trim($input['code'] ?? '');
+    $email           = strtolower(trim($input['email'] ?? ''));
+    $newPassword     = $input['new_password'] ?? '';
+    $confirmPassword = $input['confirm_password'] ?? '';
+
+    if (empty($newPassword) || strlen($newPassword) < 6) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'New password must be at least 6 characters long.']);
+        exit;
+    }
+
+    if (!empty($confirmPassword) && $newPassword !== $confirmPassword) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Passwords do not match.']);
+        exit;
+    }
+
+    if (empty($token) && (empty($code) || empty($email))) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Reset token or email + security code is required.']);
+        exit;
+    }
+
+    if (!empty($token)) {
+        $stmt = $pdo->prepare("
+            SELECT pr.*, u.name, u.role, u.student_id 
+            FROM password_resets pr
+            JOIN users u ON pr.user_id = u.id
+            WHERE pr.token = ? AND pr.is_used = 0 AND pr.expires_at > NOW()
+            LIMIT 1
+        ");
+        $stmt->execute([$token]);
+    } else {
+        $stmt = $pdo->prepare("
+            SELECT pr.*, u.name, u.role, u.student_id 
+            FROM password_resets pr
+            JOIN users u ON pr.user_id = u.id
+            WHERE LOWER(pr.email) = ? AND pr.code = ? AND pr.is_used = 0 AND pr.expires_at > NOW()
+            ORDER BY pr.id DESC LIMIT 1
+        ");
+        $stmt->execute([$email, $code]);
+    }
+
+    $resetRow = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$resetRow) {
+        http_response_code(400);
+        echo json_encode(['success' => false, 'message' => 'Invalid, expired, or already used password reset code/token. Please request a new code.']);
+        exit;
+    }
+
+    $userId = (int)$resetRow['user_id'];
+    $hashed = password_hash($newPassword, PASSWORD_BCRYPT);
+
+    $upUser = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+    $upUser->execute([$hashed, $userId]);
+
+    $upPr = $pdo->prepare("UPDATE password_resets SET is_used = 1 WHERE id = ?");
+    $upPr->execute([$resetRow['id']]);
+
+    echo json_encode([
+        'success'    => true,
+        'role'       => $resetRow['role'],
+        'student_id' => $resetRow['student_id'] ?? formatUserId($resetRow['role'], $userId),
+        'message'    => 'Your password has been reset successfully! You can now log in with your updated credentials.'
+    ]);
+    exit;
+}
+
+/* ==========================================================================
+   PORTAL LIVE SYNC (REAL-TIME UPDATES WITHOUT MANUAL REFRESH)
+   ========================================================================== */
+if ($action === 'live_sync') {
+    if (!isset($_SESSION['user'])) {
+        echo json_encode(['success' => false, 'logged_in' => false]);
+        exit;
+    }
+
+    $currentUser = $_SESSION['user'];
+    $myId = (int)$currentUser['id'];
+    $myRole = $currentUser['role'] ?? 'student';
+
+    $syncData = [
+        'success'   => true,
+        'logged_in' => true,
+        'role'      => $myRole,
+        'timestamp' => time()
+    ];
+
+    if ($myRole === 'admin') {
+        // Admin metrics: student registrations, pending verifications
+        $stCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'")->fetchColumn();
+        $pendingVerifs = 0;
+        try {
+            $pendingVerifs = (int)$pdo->query("SELECT COUNT(*) FROM student_verification_requests WHERE status = 'pending'")->fetchColumn();
+        } catch (Throwable $e) {}
+        
+        $latestSt = $pdo->query("SELECT id, name, email, student_id, created_at FROM users WHERE role = 'student' ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+
+        $syncData['total_students'] = $stCount;
+        $syncData['pending_verifications'] = $pendingVerifs;
+        $syncData['latest_student'] = $latestSt ?: null;
+
+    } else if ($myRole === 'staff') {
+        // Staff metrics: coursework submissions
+        $subCount = 0;
+        try {
+            $subCount = (int)$pdo->query("SELECT COUNT(*) FROM coursework_submissions")->fetchColumn();
+            $latestSub = $pdo->query("SELECT id, assignment_id, student_id, submitted_at FROM coursework_submissions ORDER BY id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+            $syncData['latest_submission'] = $latestSub ?: null;
+        } catch (Throwable $e) {}
+        $syncData['total_submissions'] = $subCount;
+
+    } else if ($myRole === 'student') {
+        // Student status check
+        $stCheck = $pdo->prepare("SELECT is_verified, is_paid, student_id FROM users WHERE id = ?");
+        $stCheck->execute([$myId]);
+        $stRow = $stCheck->fetch(PDO::FETCH_ASSOC);
+        $syncData['is_verified'] = (int)($stRow['is_verified'] ?? 0) === 1;
+        $syncData['is_paid'] = (int)($stRow['is_paid'] ?? 0) === 1;
+        $syncData['student_id'] = $stRow['student_id'] ?? null;
+    }
+
+    echo json_encode($syncData);
+    exit;
+}
+
 // Fallback for unknown action
 http_response_code(400);
 echo json_encode(['success' => false, 'message' => 'Invalid action specified.']);
