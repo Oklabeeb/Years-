@@ -30,6 +30,19 @@ try {
         if (empty($cols)) {
             $pdo->exec("ALTER TABLE chat_messages ADD COLUMN deleted_for_users TEXT NULL DEFAULT NULL AFTER is_read");
         }
+
+        $uCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetchAll();
+        if (empty($uCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN status ENUM('active', 'suspended', 'invited') NOT NULL DEFAULT 'active' AFTER role");
+        }
+        $mfaCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'mfa_enabled'")->fetchAll();
+        if (empty($mfaCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN mfa_enabled TINYINT(1) NOT NULL DEFAULT 0 AFTER status");
+        }
+        $loginCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'last_login_at'")->fetchAll();
+        if (empty($loginCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL AFTER mfa_enabled");
+        }
     } catch (Throwable $migErr) {
         error_log("Schema auto-migration notice: " . $migErr->getMessage());
     }
