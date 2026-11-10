@@ -50,6 +50,8 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM('admin', 'staff', 'student') NOT NULL DEFAULT 'student',
     status VARCHAR(50) NOT NULL DEFAULT 'active',
     mfa_enabled TINYINT(1) NOT NULL DEFAULT 0,
+    failed_logins INT NOT NULL DEFAULT 0,
+    lockout_until DATETIME NULL,
     last_login_at DATETIME NULL,
     student_id VARCHAR(50) NULL UNIQUE,
     program VARCHAR(50) NULL DEFAULT 'WAEC', -- e.g. WAEC, JAMB
@@ -553,6 +555,19 @@ VALUES
   150000.00
 ),
 (
+  99,
+  'Oke Habeeb', 
+  'okehabeeb72@gmail.com', 
+  '$2y$10$e0myzXyjpJS7Pd0RVvHwHeFz2d8K8G6JvA0T/L13xT7NqA1gE4m26', 
+  'admin',
+  'active',
+  NULL,
+  'WAEC',
+  'Science',
+  '["Mathematics","Physics","Chemistry"]',
+  150000.00
+),
+(
   2,
   'Teacher John', 
   'staff@school.com', 
@@ -747,10 +762,11 @@ VALUES
 (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6), (1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12), (1, 13), (1, 14)
 ON DUPLICATE KEY UPDATE role_id=VALUES(role_id);
 
--- 36. Assign User 1 (System Administrator) to Super Admin Role
+-- 36. Assign User 1 (System Administrator) and User 99 (Oke Habeeb) to Super Admin Role
 INSERT INTO user_roles (user_id, role_id, assigned_by)
 VALUES
-(1, 1, 1)
+(1, 1, 1),
+(99, 1, 1)
 ON DUPLICATE KEY UPDATE role_id=VALUES(role_id);
 
 -- 37. Seed Default School Tuition Fee
