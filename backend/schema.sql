@@ -1,3 +1,4 @@
+USE school_portal_db_final;
 -- ==========================================================================
 -- SPRINGFIELD HIGH SCHOOL & ACADEMY - ENTERPRISE PORTAL DATABASE SCHEMA
 -- Fully compatible with TiDB Cloud (Serverless & Dedicated), MySQL 5.7 / 8.0, and MariaDB
@@ -7,8 +8,6 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
 -- 1. Create and select database (Safe for TiDB Cloud console or local MySQL)
-CREATE DATABASE IF NOT EXISTS school_portal_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE school_portal_db;
 
 -- 2. Drop existing tables in reverse dependency order for clean re-creation
 DROP TABLE IF EXISTS password_resets;
@@ -49,7 +48,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     role ENUM('admin', 'staff', 'student') NOT NULL DEFAULT 'student',
-    status ENUM('active', 'suspended', 'invited') NOT NULL DEFAULT 'active',
+    status VARCHAR(50) NOT NULL DEFAULT 'active',
     mfa_enabled TINYINT(1) NOT NULL DEFAULT 0,
     last_login_at DATETIME NULL,
     student_id VARCHAR(50) NULL UNIQUE,
@@ -188,7 +187,7 @@ CREATE TABLE IF NOT EXISTS fees (
     description TEXT NULL,
     base_monthly_fee DECIMAL(10, 2) NOT NULL DEFAULT 20000.00,
     program VARCHAR(50) NOT NULL DEFAULT 'All', -- 'All', 'WAEC', 'JAMB'
-    status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+    status VARCHAR(50) NOT NULL DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -207,7 +206,7 @@ CREATE TABLE IF NOT EXISTS payments (
     base_amount DECIMAL(10, 2) NOT NULL,
     discount_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     amount_paid DECIMAL(10, 2) NOT NULL,
-    status ENUM('pending', 'success', 'failed') NOT NULL DEFAULT 'success',
+    status VARCHAR(50) NOT NULL DEFAULT 'success',
     payment_method VARCHAR(50) NOT NULL DEFAULT 'online',
     paid_until DATETIME NOT NULL,
     paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -236,7 +235,7 @@ CREATE TABLE IF NOT EXISTS staff_payroll (
     net_amount DECIMAL(10,2) NOT NULL,
     month_year VARCHAR(30) NOT NULL,
     payment_method VARCHAR(50) NOT NULL DEFAULT 'platform_transfer',
-    status ENUM('paid', 'processing', 'failed') NOT NULL DEFAULT 'paid',
+    status VARCHAR(50) NOT NULL DEFAULT 'paid',
     notes TEXT NULL,
     paid_by_admin_id INT NULL,
     paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -473,8 +472,8 @@ CREATE TABLE IF NOT EXISTS student_verification_requests (
     payment_method VARCHAR(50) NOT NULL DEFAULT 'paystack',
     payment_reference VARCHAR(100) NOT NULL,
     proof_note TEXT NULL,
-    status ENUM('pending', 'verified', 'rejected') NOT NULL DEFAULT 'pending',
-    auto_verification_status ENUM('success', 'failed', 'unsupported') NOT NULL DEFAULT 'failed',
+    status VARCHAR(50) NOT NULL DEFAULT 'pending',
+    auto_verification_status VARCHAR(50) NOT NULL DEFAULT 'failed',
     auto_failure_reason VARCHAR(255) NULL,
     verified_by VARCHAR(100) NULL,
     verified_at DATETIME NULL,
@@ -497,7 +496,7 @@ CREATE TABLE IF NOT EXISTS email_logs (
     message_body LONGTEXT NOT NULL,
     action_type VARCHAR(50) NOT NULL DEFAULT 'student_id_activation',
     activation_link TEXT NULL,
-    status ENUM('sent', 'logged') NOT NULL DEFAULT 'logged',
+    status VARCHAR(50) NOT NULL DEFAULT 'logged',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_recip_email (recipient_email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

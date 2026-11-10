@@ -33,7 +33,10 @@ try {
 
         $uCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetchAll();
         if (empty($uCols)) {
-            $pdo->exec("ALTER TABLE users ADD COLUMN status ENUM('active', 'suspended', 'invited') NOT NULL DEFAULT 'active' AFTER role");
+            $pdo->exec("ALTER TABLE users ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active' AFTER role");
+        } else {
+            // Ensure status column is VARCHAR(50) so 'pending_verification' never triggers Warning 1265 (Data truncated)
+            $pdo->exec("ALTER TABLE users MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'active'");
         }
         $mfaCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'mfa_enabled'")->fetchAll();
         if (empty($mfaCols)) {
@@ -43,6 +46,15 @@ try {
         if (empty($loginCols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN last_login_at DATETIME NULL AFTER mfa_enabled");
         }
+
+        try {
+            $pdo->exec("ALTER TABLE student_verification_requests MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'pending'");
+            $pdo->exec("ALTER TABLE student_verification_requests MODIFY COLUMN auto_verification_status VARCHAR(50) NOT NULL DEFAULT 'failed'");
+        } catch (Throwable $e) {}
+
+        try {
+            $pdo->exec("ALTER TABLE email_logs MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'logged'");
+        } catch (Throwable $e) {}
     } catch (Throwable $migErr) {
         error_log("Schema auto-migration notice: " . $migErr->getMessage());
     }
