@@ -55,8 +55,9 @@ try {
         try {
             $pdo->exec("ALTER TABLE email_logs MODIFY COLUMN status VARCHAR(50) NOT NULL DEFAULT 'logged'");
         } catch (Throwable $e) {}
+        $migCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $migErr) {
-        error_log("Schema auto-migration notice: " . $migErr->getMessage());
+        $migrationError = $migErr->getMessage();
     }
 
     echo json_encode([
@@ -64,6 +65,8 @@ try {
         'backend' => 'working',
         'database' => $result == 1 ? 'connected' : 'not connected',
         'schema_migrated' => true,
+        'user_status_type' => $migCol['Type'] ?? null,
+        'migration_error' => $migrationError ?? null,
         'env_frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '(not set)',
         'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received'
     ]);
