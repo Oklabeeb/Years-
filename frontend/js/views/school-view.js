@@ -63,6 +63,11 @@ const SchoolView = {
     await schoolController.loadAlocSchool('admin');
     await schoolController.loadAdminAnalytics();
     await schoolController.loadAdminNotices();
+
+    if (typeof schoolController !== 'undefined') {
+      schoolController.startPortalLiveSync();
+      schoolController.startBackgroundUnreadPolling();
+    }
   },
 
   /* ------------------------------------------------------------------------
@@ -191,6 +196,11 @@ const SchoolView = {
 
     // Render Staff Class Grade Distribution Chart
     this.renderStaffGradeDistributionChart(gradeCounts);
+
+    if (typeof schoolController !== 'undefined') {
+      schoolController.startPortalLiveSync();
+      schoolController.startBackgroundUnreadPolling();
+    }
   },
 
   renderStaffGradeDistributionChart(gradeCounts = {}) {
@@ -316,6 +326,11 @@ const SchoolView = {
     // Load student data & setup resources
     await schoolController.loadAcademicSession();
     await schoolController.initStudentDashboard();
+
+    if (typeof schoolController !== 'undefined') {
+      schoolController.startPortalLiveSync();
+      schoolController.startBackgroundUnreadPolling();
+    }
   },
 
   /* Helper to clear visible dashboards before rendering active panel */
@@ -4655,15 +4670,17 @@ const SchoolView = {
      5-SECOND CHAT DROPDOWN NOTIFICATION
      ------------------------------------------------------------------------ */
   _chatDropdownTimer: null,
+  _activeNotificationMsg: null,
 
   showChatDropdownNotification(msg) {
     if (!msg || !msg.message) return;
+    this._activeNotificationMsg = msg;
 
     let dropdown = document.getElementById('chatNotificationDropdown');
     if (!dropdown) {
       dropdown = document.createElement('div');
       dropdown.id = 'chatNotificationDropdown';
-      dropdown.className = 'chat-dropdown-notification hidden';
+      dropdown.className = 'chat-dropdown-notification';
       dropdown.setAttribute('role', 'alert');
       dropdown.setAttribute('aria-live', 'assertive');
       document.body.appendChild(dropdown);
@@ -4694,7 +4711,7 @@ const SchoolView = {
     const headerTitle = isGroup ? `💬 Campus General: ${this.escapeHtml(senderName)}` : `💬 ${this.escapeHtml(senderName)}`;
 
     dropdown.innerHTML = `
-      <div class="chat-dropdown-inner" onclick="schoolController.handleChatNotificationClick(${JSON.stringify(msg).replace(/"/g, '&quot;')})">
+      <div class="chat-dropdown-inner" onclick="schoolController.handleChatNotificationClick()">
         <div class="chat-dropdown-avatar">${this.escapeHtml(initials)}</div>
         <div class="chat-dropdown-content">
           <div class="chat-dropdown-header">
@@ -4711,8 +4728,8 @@ const SchoolView = {
     `;
 
     // Make visible with smooth slide-down animation
+    dropdown.style.display = 'block';
     dropdown.classList.remove('hidden');
-    // Force browser reflow to restart css animation
     void dropdown.offsetWidth;
     dropdown.classList.add('show');
 
@@ -4736,6 +4753,7 @@ const SchoolView = {
       setTimeout(() => {
         if (!dropdown.classList.contains('show')) {
           dropdown.classList.add('hidden');
+          dropdown.style.display = 'none';
         }
       }, 350);
     }
@@ -4901,6 +4919,9 @@ const SchoolView = {
                 </div>
               </div>
               <div class="wa-chat-header-actions" style="display:flex; align-items:center; gap:.5rem;">
+                <button type="button" class="btn-sm" onclick="schoolController.testChatNotification()" title="Preview 5-second chat notification alert" style="background:rgba(23,107,80,.1); color:var(--primary); border:1px solid rgba(23,107,80,.25); border-radius:8px; padding:.32rem .65rem; font-size:.75rem; font-weight:750; cursor:pointer; display:inline-flex; align-items:center; gap:.3rem;">
+                  <span>🔔</span> Test Alert (5s)
+                </button>
                 <button type="button" class="btn-sm" onclick="schoolController.handleClearChatPrompt()" title="Clear messages from chat" style="background:rgba(239,68,68,.08); color:#dc2626; border:1px solid rgba(239,68,68,.25); border-radius:8px; padding:.32rem .65rem; font-size:.75rem; font-weight:750; cursor:pointer; display:inline-flex; align-items:center; gap:.3rem;">
                   <span>🧹</span> Clear Chat
                 </button>

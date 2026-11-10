@@ -35,6 +35,9 @@ const schoolController = {
       } else if (user.role === 'student') {
         await SchoolView.initializeStudent();
       }
+
+      this.startPortalLiveSync();
+      this.startBackgroundUnreadPolling();
     } catch (err) {
       if (err.is_unverified) {
         if (confirm(`${err.message}\n\nWould you like to open the Tuition Payment & Verification window now to complete your enrollment?`)) {
@@ -155,6 +158,8 @@ const schoolController = {
             const subCount = Array.isArray(payload.subjects) ? payload.subjects.length : (progName === 'JAMB' ? 4 : 11);
             alert(`Student account created successfully!\nStudent ID: ${studentId}\nProgramme: ${progName} (${payload.department} Department)\n${subCount} Subjects Registered Successfully\nWelcome to your Student Portal.`);
           }
+          this.startPortalLiveSync();
+          this.startBackgroundUnreadPolling();
         }
       } else {
         alert(res.data?.message || 'Registration failed.');
@@ -2918,7 +2923,10 @@ const schoolController = {
       if (msgs.length > 0) {
         this._chatState.lastMessageId = msgs[msgs.length - 1].id;
       }
-      if (type === 'direct') {
+      if (type === 'group' && target === 'general' && msgs.length > 0) {
+        this.setLastReadGeneralId(msgs[msgs.length - 1].id);
+        this.pollUnreadCounters();
+      } else if (type === 'direct') {
         this.pollUnreadCounters();
       }
 
@@ -3586,36 +3594,95 @@ const schoolController = {
       }
 
       // 10. Live Chat Unread Badges across all portals & 5-Second Dropdown Notification
-      if (sync.total_unread_chats !== undefined) {
-        SchoolView.updateAllChatBadges(sync.total_unread_chats);
-      }
-
-      if (sync.latest_chat && sync.latest_chat_id) {
-        if (!this._lastKnownChatId) {
-          this._lastKnownChatId = sync.latest_chat_id;
-        } else if (sync.latest_chat_id > this._lastKnownChatId) {
-          this._lastKnownChatId = sync.latest_chat_id;
-          const msg = sync.latest_chat;
-          if (msg.sender_id !== schoolModel.user.id) {
-            const isCurrentlyViewingThisThread = (
-              this._chatState.activeType === msg.channel_type &&
-              (
-                (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
-                (msg.channel_type === 'group' && this._chatState.activeTarget === 'general')
-              ) &&
-              (document.getElementById('chatMessagesStream') && document.getElementById('chatMessagesStream').offsetParent !== null)
-            );
-            if (!isCurrentlyViewingThisThread) {
-              SchoolView.showChatDropdownNotification(msg);
-            }
-          }
-        }
-      }
+      this.handleIncomingChatSync(sync);
 
       this._lastLiveSyncState = sync;
     } catch (syncErr) {
       // background tick error ignored
     }
+  },
+
+  /* ------------------------------------------------------------------------
+     UNIFIED CHAT SYNC & UNREAD COUNTER LOGIC
+     ------------------------------------------------------------------------ */
+  getLastReadGeneralId() {
+    if (!schoolModel.user) return 0;
+    const key = 'last_read_general_msg_id_' + schoolModel.user.id;
+    return parseInt(localStorage.getItem(key) || '0', 10);
+  },
+
+  setLastReadGeneralId(id) {
+    if (!schoolModel.user || !id) return;
+    const key = 'last_read_general_msg_id_' + schoolModel.user.id;
+    const cur = this.getLastReadGeneralId();
+    if (id > cur) {
+      localStorage.setItem(key, String(id));
+    }
+  },
+
+  handleIncomingChatSync(syncOrStatus) {
+    if (!schoolModel.user || !syncOrStatus) return;
+    const userId = Number(schoolModel.user.id);
+
+    const totalUnreadDms = Number(syncOrStatus.total_unread_dms ?? syncOrStatus.total_unread_chats ?? 0);
+    const latestGenId = Number(syncOrStatus.latest_general_msg_id || 0);
+    const lastReadGenId = this.getLastReadGeneralId();
+
+    // If first time encountering general channel, mark up to current max as read
+    if (!localStorage.getItem('last_read_general_msg_id_' + userId) && latestGenId > 0) {
+      this.setLastReadGeneralId(latestGenId);
+    }
+
+    let unreadCount = totalUnreadDms;
+    const isChatCurrentlyOpen = (
+      document.getElementById('campusChatModal')?.style?.display === 'flex' ||
+      document.getElementById('page-chat')?.classList?.contains('hidden') === false ||
+      document.getElementById('staffChatPage')?.classList?.contains('hidden') === false ||
+      document.getElementById('adminChatPage')?.classList?.contains('hidden') === false
+    );
+
+    if (latestGenId > lastReadGenId && !isChatCurrentlyOpen) {
+      unreadCount += 1;
+    }
+
+    SchoolView.updateAllChatBadges(unreadCount);
+
+    const msg = syncOrStatus.latest_chat;
+    const msgId = Number(syncOrStatus.latest_chat_id || (msg && msg.id) || 0);
+
+    if (msg && msgId > 0) {
+      if (!this._lastKnownChatId) {
+        this._lastKnownChatId = msgId;
+      } else if (msgId > this._lastKnownChatId) {
+        this._lastKnownChatId = msgId;
+
+        // Trigger notification only if from someone else
+        if (Number(msg.sender_id) !== userId) {
+          const isCurrentlyViewingThisThread = (
+            isChatCurrentlyOpen &&
+            this._chatState.activeType === msg.channel_type &&
+            (
+              (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
+              (msg.channel_type === 'group' && this._chatState.activeTarget === 'general')
+            )
+          );
+
+          if (!isCurrentlyViewingThisThread) {
+            SchoolView.showChatDropdownNotification(msg);
+          }
+        }
+      }
+    }
+  },
+
+  testChatNotification() {
+    SchoolView.showChatDropdownNotification({
+      id: Date.now(),
+      sender_name: 'Campus Administration',
+      sender_role: 'admin',
+      channel_type: 'direct',
+      message: 'This is a live preview of the 5-second chat dropdown alert. Notifications are active!'
+    });
   },
 
   async refreshActiveChat() {
@@ -3682,35 +3749,13 @@ const schoolController = {
     try {
       const status = await schoolModel.pollChatUnread();
       if (status && status.success) {
-        const unreadCount = status.total_unread_dms || 0;
-        SchoolView.updateAllChatBadges(unreadCount);
-
-        if (status.latest_chat && status.latest_chat_id) {
-          if (!this._lastKnownChatId) {
-            this._lastKnownChatId = status.latest_chat_id;
-          } else if (status.latest_chat_id > this._lastKnownChatId) {
-            this._lastKnownChatId = status.latest_chat_id;
-            const msg = status.latest_chat;
-            if (msg.sender_id !== schoolModel.user.id) {
-              const isCurrentlyViewingThisThread = (
-                this._chatState.activeType === msg.channel_type &&
-                (
-                  (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
-                  (msg.channel_type === 'group' && this._chatState.activeTarget === 'general')
-                ) &&
-                (document.getElementById('chatMessagesStream') && document.getElementById('chatMessagesStream').offsetParent !== null)
-              );
-              if (!isCurrentlyViewingThisThread) {
-                SchoolView.showChatDropdownNotification(msg);
-              }
-            }
-          }
-        }
+        this.handleIncomingChatSync(status);
       }
     } catch (e) {}
   },
 
   handleChatNotificationClick(msg) {
+    const targetMsg = msg || SchoolView._activeNotificationMsg;
     SchoolView.hideChatDropdownNotification();
     if (!schoolModel.user) return;
 
@@ -3731,10 +3776,10 @@ const schoolController = {
       this.openCampusChatModal();
     }
 
-    if (msg) {
+    if (targetMsg) {
       setTimeout(() => {
-        if (msg.channel_type === 'direct' && msg.sender_id) {
-          this.selectChatTarget('direct', msg.sender_id);
+        if (targetMsg.channel_type === 'direct' && targetMsg.sender_id) {
+          this.selectChatTarget('direct', targetMsg.sender_id);
         } else {
           this.selectChatTarget('group', 'general');
         }

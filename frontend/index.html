@@ -1908,7 +1908,7 @@
     right: 24px;
     max-width: 390px;
     width: calc(100% - 48px);
-    z-index: 999999;
+    z-index: 2147483647;
     background: var(--card, #ffffff);
     color: var(--text, #0f172a);
     border-radius: 16px;
@@ -1931,9 +1931,20 @@
   }
 
   .chat-dropdown-notification.show {
-    transform: translateY(0);
-    opacity: 1;
-    pointer-events: auto;
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    display: block !important;
+  }
+
+  @media (max-width: 600px) {
+    .chat-dropdown-notification {
+      top: 12px;
+      left: 12px;
+      right: 12px;
+      width: calc(100% - 24px);
+      max-width: none;
+    }
   }
 
   .chat-dropdown-inner {

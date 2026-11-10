@@ -1293,6 +1293,13 @@ if ($action === 'live_sync') {
         $syncData['latest_chat'] = null;
     }
 
+    try {
+        $syncData['latest_general_msg_id'] = (int)$pdo->query("
+            SELECT COALESCE(MAX(id), 0) FROM chat_messages
+            WHERE channel_type = 'group' AND deleted_at IS NULL
+        ")->fetchColumn();
+    } catch (Throwable $e) { $syncData['latest_general_msg_id'] = 0; }
+
     if ($myRole === 'admin') {
         // Admin metrics: student registrations, pending verifications
         $stCount = (int)$pdo->query("SELECT COUNT(*) FROM users WHERE role = 'student'")->fetchColumn();
