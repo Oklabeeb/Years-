@@ -303,6 +303,8 @@ const schoolController = {
       }
 
       const resources = await this.model.getResources(filters);
+      if (!this.cachedResources) this.cachedResources = {};
+      (resources || []).forEach(r => { if (r && r.id) this.cachedResources[r.id] = r; });
       SchoolView.renderResourceTable('staffResourceRows', resources);
     } catch (err) {
       console.error('Error loading staff resources:', err);
@@ -323,6 +325,8 @@ const schoolController = {
       }
 
       const resources = await this.model.getResources(filters);
+      if (!this.cachedResources) this.cachedResources = {};
+      (resources || []).forEach(r => { if (r && r.id) this.cachedResources[r.id] = r; });
       SchoolView.renderResourceTable('adminResourceRows', resources);
     } catch (err) {
       console.error('Error loading admin resources:', err);
@@ -340,6 +344,27 @@ const schoolController = {
     } catch (err) {
       console.error('Error fetching resource for edit:', err);
       alert(err.message || 'Failed to load resource details.');
+    }
+  },
+
+  async openResourceViewer(id) {
+    try {
+      let resource = (this.cachedResources && this.cachedResources[id]) ? this.cachedResources[id] : null;
+      if (!resource) {
+        resource = await this.model.getResource(id);
+      }
+      if (resource) {
+        if (!this.cachedResources) this.cachedResources = {};
+        this.cachedResources[id] = resource;
+        SchoolView.openResourceViewerModal(resource);
+      } else {
+        const fallbackUrl = this.model.resolveApiUrl(`api/resources.php?action=view_resource_file&id=${id}`);
+        window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.error('Error opening resource viewer:', err);
+      const fallbackUrl = this.model.resolveApiUrl(`api/resources.php?action=view_resource_file&id=${id}`);
+      window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
     }
   },
 
@@ -805,6 +830,9 @@ const schoolController = {
         year
       });
 
+      if (!this.cachedResources) this.cachedResources = {};
+      (papers || []).forEach(p => { if (p && p.id) this.cachedResources[p.id] = p; });
+
       SchoolView.renderStudentPastQuestions(papers);
     } catch (err) {
       console.error('Error loading past questions:', err);
@@ -819,6 +847,9 @@ const schoolController = {
         type: 'textbook',
         subject
       });
+
+      if (!this.cachedResources) this.cachedResources = {};
+      (books || []).forEach(b => { if (b && b.id) this.cachedResources[b.id] = b; });
 
       SchoolView.renderStudentTextbooks(books);
     } catch (err) {

@@ -381,11 +381,13 @@ const SchoolView = {
 
     document.querySelectorAll('.workspace-page').forEach(page => {
       page.classList.add('hidden');
+      page.style.display = 'none';
     });
 
     const targetPage = this.element(`page-${pageId}`);
     if (targetPage) {
       targetPage.classList.remove('hidden');
+      targetPage.style.display = 'block';
     }
 
     const titleEl = this.element('workspaceTitle');
@@ -535,9 +537,18 @@ const SchoolView = {
         : `<span style="color:var(--muted); font-size:.82rem;">${res.author ? `By ${this.escapeHtml(res.author)}` : 'Curriculum Text'}</span>`;
 
       const resolvedFilePath = res.file_path ? this.resolveAssetUrl(res.file_path) : '';
-      const fileBtn = resolvedFilePath
-        ? `<a href="${resolvedFilePath}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-primary" title="Open and read document"><span>📖</span> Read / Open</a>`
-        : '<span style="color:var(--muted); font-size:.75rem;">No file</span>';
+      const readUrl = window.schoolModel && typeof window.schoolModel.resolveApiUrl === 'function'
+        ? window.schoolModel.resolveApiUrl(`api/resources.php?action=view_resource_file&id=${res.id}`)
+        : resolvedFilePath;
+
+      const fileBtn = `
+        <div style="display:inline-flex; align-items:center; gap:.4rem; flex-wrap:wrap;">
+          <button type="button" class="btn-sm btn-sm-primary" onclick="schoolController.openResourceViewer(${res.id})" title="Read in portal study reader">
+            <span>📖</span> Read / Open
+          </button>
+          ${readUrl ? `<a href="${readUrl}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-outline" title="Open in separate tab">↗️</a>` : ''}
+        </div>
+      `;
 
       return `
         <tr>
@@ -575,7 +586,9 @@ const SchoolView = {
     list.innerHTML = papers.map(paper => {
       const examBadgeClass = paper.exam === 'JAMB' ? 'badge-green' : 'badge-gold';
       const yearBadge = paper.year ? `<span class="badge badge-blue">${paper.year}</span>` : '';
-      const filePath = paper.file_path ? this.resolveAssetUrl(paper.file_path) : '#';
+      const readUrl = window.schoolModel && typeof window.schoolModel.resolveApiUrl === 'function'
+        ? window.schoolModel.resolveApiUrl(`api/resources.php?action=view_resource_file&id=${paper.id}`)
+        : (paper.file_path ? this.resolveAssetUrl(paper.file_path) : '#');
 
       return `
         <div class="pq-card">
@@ -588,9 +601,12 @@ const SchoolView = {
             <h3>${this.escapeHtml(paper.title)}</h3>
             <p>${paper.year ? `${paper.year} Examination practice paper` : 'Official past question paper with detailed solutions.'}</p>
           </div>
-          <div style="margin-top:auto; padding-top:.7rem; border-top:1px solid var(--border);">
-            <a href="${filePath}" target="_blank" rel="noopener noreferrer">
-              <span>📖</span> Read & Practise Paper
+          <div style="margin-top:auto; padding-top:.7rem; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn-sm btn-sm-primary" style="width:auto; padding:.45rem .85rem; font-size:.82rem; cursor:pointer;" onclick="schoolController.openResourceViewer(${paper.id})">
+              <span>📖</span> Read &amp; Practise Paper
+            </button>
+            <a href="${readUrl}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-outline" style="font-size:.78rem; text-decoration:none;" title="Open in new window">
+              <span>↗️</span> New Tab
             </a>
           </div>
         </div>
@@ -611,7 +627,9 @@ const SchoolView = {
     }
 
     list.innerHTML = books.map(book => {
-      const filePath = book.file_path ? this.resolveAssetUrl(book.file_path) : '#';
+      const readUrl = window.schoolModel && typeof window.schoolModel.resolveApiUrl === 'function'
+        ? window.schoolModel.resolveApiUrl(`api/resources.php?action=view_resource_file&id=${book.id}`)
+        : (book.file_path ? this.resolveAssetUrl(book.file_path) : '#');
       const authorText = book.author ? `By ${this.escapeHtml(book.author)}` : 'Approved Curriculum Material';
 
       return `
@@ -624,9 +642,12 @@ const SchoolView = {
             <h3>${this.escapeHtml(book.title)}</h3>
             <p>${authorText}</p>
           </div>
-          <div style="margin-top:auto; padding-top:.7rem; border-top:1px solid var(--border);">
-            <a href="${filePath}" target="_blank" rel="noopener noreferrer">
+          <div style="margin-top:auto; padding-top:.7rem; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn-sm btn-sm-primary" style="width:auto; padding:.45rem .85rem; font-size:.82rem; cursor:pointer;" onclick="schoolController.openResourceViewer(${book.id})">
               <span>📖</span> Read Textbook
+            </button>
+            <a href="${readUrl}" target="_blank" rel="noopener noreferrer" class="btn-sm btn-sm-outline" style="font-size:.78rem; text-decoration:none;" title="Open in new window">
+              <span>↗️</span> New Tab
             </a>
           </div>
         </div>
@@ -1545,13 +1566,16 @@ const SchoolView = {
 
     const pqList = allResources.filter(r => r.type === 'past_question');
     const tbList = allResources.filter(r => r.type === 'textbook');
+    const enrolled = (window.schoolModel && window.schoolModel.studentEnrolledSubjects) || [];
 
     if (pqSubjectSelect) {
       const currentVal = pqSubjectSelect.value;
-      const subjects = Array.from(new Set(pqList.map(r => r.subject).filter(Boolean))).sort();
+      const subjectsSet = new Set(pqList.map(r => r.subject).filter(Boolean));
+      enrolled.forEach(s => subjectsSet.add(s));
+      const subjects = Array.from(subjectsSet).sort();
       pqSubjectSelect.innerHTML = '<option value="">All subjects</option>' + 
         subjects.map(s => `<option value="${this.escapeHtml(s)}">${this.escapeHtml(s)}</option>`).join('');
-      if (currentVal) pqSubjectSelect.value = currentVal;
+      if (currentVal && subjectsSet.has(currentVal)) pqSubjectSelect.value = currentVal;
     }
 
     if (pqYearSelect) {
@@ -1564,10 +1588,81 @@ const SchoolView = {
 
     if (tbSubjectSelect) {
       const currentVal = tbSubjectSelect.value;
-      const subjects = Array.from(new Set(tbList.map(r => r.subject).filter(Boolean))).sort();
+      const subjectsSet = new Set(tbList.map(r => r.subject).filter(Boolean));
+      enrolled.forEach(s => subjectsSet.add(s));
+      const subjects = Array.from(subjectsSet).sort();
       tbSubjectSelect.innerHTML = '<option value="">All subjects</option>' + 
         subjects.map(s => `<option value="${this.escapeHtml(s)}">${this.escapeHtml(s)}</option>`).join('');
-      if (currentVal) tbSubjectSelect.value = currentVal;
+      if (currentVal && subjectsSet.has(currentVal)) tbSubjectSelect.value = currentVal;
+    }
+  },
+
+  /* ------------------------------------------------------------------------
+     6c. INTERACTIVE IN-PORTAL RESOURCE VIEWER MODAL
+     ------------------------------------------------------------------------ */
+  openResourceViewerModal(res) {
+    if (!res) return;
+    const modal = this.element('resourceViewerModal');
+    const titleEl = this.element('resViewerTitle');
+    const typeBadge = this.element('resViewerTypeBadge');
+    const subjectBadge = this.element('resViewerSubjectBadge');
+    const newTabBtn = this.element('resViewerNewTabBtn');
+    const loading = this.element('resViewerLoading');
+    const iframe = this.element('resViewerIframe');
+
+    if (!modal) return;
+
+    if (titleEl) titleEl.textContent = res.title || 'Curriculum Study Material';
+    if (typeBadge) {
+      const isPastQ = res.type === 'past_question';
+      typeBadge.textContent = isPastQ ? `${res.exam || 'WAEC'} Past Question` : 'Subject Textbook';
+      typeBadge.className = isPastQ ? 'badge badge-gold' : 'badge badge-green';
+    }
+    if (subjectBadge) {
+      subjectBadge.textContent = res.subject || 'General Studies';
+    }
+
+    const viewUrl = (window.schoolModel && typeof window.schoolModel.resolveApiUrl === 'function')
+      ? window.schoolModel.resolveApiUrl(`api/resources.php?action=view_resource_file&id=${res.id}`)
+      : (res.file_path ? this.resolveAssetUrl(res.file_path) : '');
+
+    if (newTabBtn) {
+      newTabBtn.onclick = () => {
+        if (viewUrl) window.open(viewUrl, '_blank', 'noopener,noreferrer');
+      };
+    }
+
+    if (loading) loading.style.display = 'flex';
+    if (iframe) {
+      iframe.onload = () => {
+        if (loading) loading.style.display = 'none';
+      };
+      iframe.src = viewUrl || 'about:blank';
+    }
+
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  },
+
+  closeResourceViewerModal() {
+    const modal = this.element('resourceViewerModal');
+    const iframe = this.element('resViewerIframe');
+    if (iframe) iframe.src = 'about:blank';
+    if (modal) {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    }
+  },
+
+  printResourceViewer() {
+    const iframe = this.element('resViewerIframe');
+    if (iframe && iframe.contentWindow) {
+      try {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+      } catch (e) {
+        window.print();
+      }
     }
   },
 

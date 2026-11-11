@@ -22,6 +22,8 @@ backend/uploads/notices/*
 !backend/uploads/notices/.gitkeep
 backend/uploads/resources/*
 !backend/uploads/resources/.gitkeep
+!backend/uploads/resources/*.html
+!backend/uploads/resources/*.pdf
 backend/uploads/submissions/*
 !backend/uploads/submissions/.gitkeep
 backend/uploads/chat/*

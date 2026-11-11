@@ -4441,6 +4441,13 @@
     </section>
 
     <section class="workspace-page hidden" id="page-examinations">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Examination Timetable & Results</strong>
+        </div>
+      </div>
       <section class="card">
         <div class="section-heading"><div><p class="eyebrow">ASSESSMENT CENTRE</p><h2>Examination timetable</h2></div><span class="badge badge-blue">School calendar</span></div>
         <p class="section-description">Check each paper's date, start time, duration and venue. Confirm any changes with your school office.</p>
@@ -4454,6 +4461,15 @@
 
     <!-- REDESIGNED STUDENT TIMETABLE -->
     <section class="workspace-page hidden" id="page-timetable">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Weekly Class Timetable</strong>
+        </div>
+        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentTimetable()">🔄 Refresh Timetable</button>
+      </div>
+
       <!-- UPCOMING / LIVE GOOGLE MEET CLASS ALERT -->
       <div id="studentLiveClassBanner" aria-live="polite"></div>
 
@@ -4487,6 +4503,14 @@
     </section>
 
     <section class="workspace-page hidden" id="page-attendance">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Attendance History & Record</strong>
+        </div>
+        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentAttendance()">🔄 Refresh Attendance</button>
+      </div>
       <div class="stats-grid attendance-summary">
         <div class="stat-card"><span class="stat-icon">✓</span><div class="label">Present</div><div class="value" id="presentCount">0</div><div class="hint">Days marked present</div></div>
         <div class="stat-card"><span class="stat-icon">–</span><div class="label">Absent</div><div class="value" id="absentCount">0</div><div class="hint">Days marked absent</div></div>
@@ -4499,6 +4523,14 @@
     </section>
 
     <section class="workspace-page hidden" id="page-assignments">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Homework & Coursework Assignments</strong>
+        </div>
+        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentAssignments()">🔄 Refresh Assignments</button>
+      </div>
       <section class="card">
         <div class="section-heading"><div><p class="eyebrow">HOMEWORK & COURSEWORK</p><h2>My assignments</h2></div><label class="filter-label">Show <select id="assignmentFilter" onchange="renderAssignments()"><option value="all">All assignments</option><option value="pending">To do</option><option value="submitted">Submitted</option></select></label></div>
         <p class="section-description">Open an assignment to enter your work and submit it. Your submission is saved in this browser preview.</p>
@@ -4507,6 +4539,13 @@
     </section>
 
     <section class="workspace-page hidden" id="page-courses">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Enrolled Subjects & Course Overview</strong>
+        </div>
+      </div>
       <section class="card">
         <div class="section-heading"><div><p class="eyebrow">CURRENT ENROLMENT</p><h2>My subjects</h2></div><span class="badge badge-green" id="courseClassLabel"></span></div>
         <div id="courseGrid" class="course-grid"></div>
@@ -4514,6 +4553,14 @@
     </section>
 
     <section class="workspace-page hidden" id="page-pastquestions">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>WAEC & JAMB Practice Papers</strong>
+        </div>
+        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentPastQuestions()">🔄 Refresh Papers</button>
+      </div>
       <section class="card">
         <p class="eyebrow">PRACTICE PAPERS</p>
         <h2 style="margin-top:.25rem;">WAEC & JAMB Past Questions</h2>
@@ -4543,6 +4590,14 @@
     </section>
 
     <section class="workspace-page hidden" id="page-textbooks">
+      <div class="workspace-page-top-nav">
+        <div class="workspace-crumb">
+          <button type="button" class="btn-sm btn-sm-outline" onclick="openWorkspace('dashboard')">← Back to Dashboard</button>
+          <span>/</span>
+          <strong>Approved Subject Textbooks & Study Materials</strong>
+        </div>
+        <button type="button" class="btn-sm btn-sm-view" onclick="schoolController.loadStudentTextbooks()">🔄 Refresh Books</button>
+      </div>
       <section class="card">
         <p class="eyebrow">STUDY MATERIALS & E-BOOKS</p>
         <h2 style="margin-top:.25rem;">Subject Textbooks</h2>
@@ -8207,6 +8262,42 @@
         <button type="submit" id="saveResourceBtn" class="btn-primary" style="width:auto; min-height:44px; padding:.7rem 1.5rem;">Save Resource</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- INTERACTIVE STUDY RESOURCE VIEWER MODAL (PAST QUESTIONS & TEXTBOOKS) -->
+<div id="resourceViewerModal" class="modal-overlay hidden" style="display:none; z-index:99999;">
+  <div class="modal-card" style="max-width:980px; width:95%; height:90vh; display:flex; flex-direction:column; padding:0; overflow:hidden; border-radius:14px; box-shadow:0 20px 50px rgba(0,0,0,0.25);">
+    <!-- Modal Header -->
+    <div style="display:flex; align-items:center; justify-content:space-between; padding:1rem 1.4rem; border-bottom:1px solid var(--border); background:var(--card-bg); flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:.75rem; min-width:0;">
+        <span style="font-size:1.6rem; line-height:1;">📖</span>
+        <div style="min-width:0;">
+          <div style="display:flex; align-items:center; gap:.5rem; flex-wrap:wrap;">
+            <span id="resViewerTypeBadge" class="badge badge-gold" style="font-size:.72rem;">Past Question</span>
+            <span id="resViewerSubjectBadge" class="subject-tag" style="font-size:.72rem;">Mathematics</span>
+          </div>
+          <h3 id="resViewerTitle" style="margin:3px 0 0; font-size:1.1rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:620px;">Resource Title</h3>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:.5rem; flex-shrink:0;">
+        <button type="button" class="btn-sm btn-sm-outline" id="resViewerNewTabBtn" title="Open in dedicated browser tab" style="display:inline-flex; align-items:center; gap:.3rem;">
+          <span>↗️</span> <span class="hide-mobile">Full Page</span>
+        </button>
+        <button type="button" class="btn-sm btn-sm-outline" id="resViewerPrintBtn" onclick="SchoolView.printResourceViewer()" title="Print or save as PDF" style="display:inline-flex; align-items:center; gap:.3rem;">
+          <span>🖨️</span> <span class="hide-mobile">Print</span>
+        </button>
+        <button type="button" onclick="SchoolView.closeResourceViewerModal()" style="border:none; background:none; font-size:1.6rem; cursor:pointer; color:var(--muted); line-height:1; padding:.2rem .4rem;" aria-label="Close modal">&times;</button>
+      </div>
+    </div>
+    <!-- Modal Body / Content -->
+    <div style="flex:1; position:relative; background:#f8fafc; overflow:hidden;">
+      <div id="resViewerLoading" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.75rem; background:rgba(255,255,255,0.88); z-index:10;">
+        <div class="spinner" style="width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin 1s linear infinite;"></div>
+        <p style="font-size:.9rem; color:var(--text-secondary); margin:0;">Opening study document...</p>
+      </div>
+      <iframe id="resViewerIframe" title="Curriculum Study Viewer" style="width:100%; height:100%; border:none; display:block;" src="about:blank"></iframe>
+    </div>
   </div>
 </div>
 

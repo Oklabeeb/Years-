@@ -44,6 +44,71 @@ if ($action === 'get_academic_session') {
     exit;
 }
 
+// Publicly stream/view curriculum study material or textbook directly (no 404s, database-backed)
+if ($action === 'view_resource_file') {
+    $id = (int)($_GET['id'] ?? 0);
+    if ($id <= 0) {
+        http_response_code(400);
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo 'Invalid resource ID requested.';
+        exit;
+    }
+
+    try {
+        $stmt = $pdo->prepare("SELECT * FROM resources WHERE id = ?");
+        $stmt->execute([$id]);
+        $res = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$res) {
+            http_response_code(404);
+            header('Content-Type: text/html; charset=UTF-8');
+            echo '<!DOCTYPE html><html><head><title>Resource Not Found</title></head><body style="font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:50px;color:#334155;"><h2>Curriculum Resource Not Found</h2><p>The requested study paper or textbook could not be located.</p></body></html>';
+            exit;
+        }
+
+        // Allow framing and cross-origin access so the portal's study reader iframe and tabs can load it cleanly
+        header('Access-Control-Allow-Origin: *');
+        header('X-Content-Type-Options: nosniff');
+
+        // 1. Direct mediumtext database content (guaranteed persistent across deployments)
+        if (!empty($res['content'])) {
+            header('Content-Type: text/html; charset=UTF-8');
+            echo $res['content'];
+            exit;
+        }
+
+        // 2. Physical server file fallback
+        if (!empty($res['file_path'])) {
+            $cleanedPath = ltrim($res['file_path'], '/');
+            $localPath = __DIR__ . '/../' . $cleanedPath;
+            if (file_exists($localPath)) {
+                $ext = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
+                if ($ext === 'pdf') {
+                    header('Content-Type: application/pdf');
+                } elseif ($ext === 'png') {
+                    header('Content-Type: image/png');
+                } elseif ($ext === 'jpg' || $ext === 'jpeg') {
+                    header('Content-Type: image/jpeg');
+                } else {
+                    header('Content-Type: text/html; charset=UTF-8');
+                }
+                readfile($localPath);
+                exit;
+            }
+        }
+
+        // 3. Structured fallback view if file was remote or content pending
+        header('Content-Type: text/html; charset=UTF-8');
+        echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' . htmlspecialchars($res['title']) . '</title><style>body{font-family:system-ui,-apple-system,sans-serif;line-height:1.6;max-width:850px;margin:30px auto;padding:25px;background:#f8fafc;color:#1e293b}.hdr{border-bottom:2px solid #0284c7;padding-bottom:15px;margin-bottom:25px}.hdr h1{font-size:1.6rem;color:#0369a1;margin:0}</style></head><body><div class="hdr"><h1>' . htmlspecialchars($res['title']) . '</h1><p><strong>Subject:</strong> ' . htmlspecialchars($res['subject']) . ' &nbsp;|&nbsp; <strong>Type:</strong> ' . htmlspecialchars(ucwords(str_replace('_', ' ', $res['type']))) . '</p></div><div style="background:#fff;padding:20px;border-radius:10px;border:1px solid #cbd5e1;"><p>This curriculum module is currently being finalized in the school digital vault.</p></div></body></html>';
+        exit;
+    } catch (Throwable $e) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=UTF-8');
+        echo 'Error displaying curriculum resource: ' . $e->getMessage();
+        exit;
+    }
+}
+
 // Check authentication session
 if (!isset($_SESSION['user'])) {
     http_response_code(401);

@@ -119,6 +119,17 @@ try {
             WHERE email = 'staff@school.com'
         ")->execute([$demoHash]);
 
+        // Auto-migrate resources table to support direct mediumtext content persistence
+        $resContentCols = $pdo->query("SHOW COLUMNS FROM resources LIKE 'content'")->fetchAll();
+        if (empty($resContentCols)) {
+            $pdo->exec("ALTER TABLE resources ADD COLUMN content MEDIUMTEXT NULL AFTER file_path");
+        }
+
+        // Seed and sync curriculum library (WAEC, JAMB, textbooks across all departments)
+        require_once __DIR__ . '/includes/curriculum_library.php';
+        $curriculumSeeded = seedCurriculumLibrary($pdo);
+        $totalResources = (int)$pdo->query("SELECT COUNT(*) FROM resources")->fetchColumn();
+
         $migCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
         $chatReadMigCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'last_read_group_msg_id'")->fetch(PDO::FETCH_ASSOC);
         $verifiedAdmin = $pdo->query("SELECT id, email, role, status FROM users WHERE email = 'okehabeeb72@gmail.com'")->fetch(PDO::FETCH_ASSOC);
@@ -134,6 +145,8 @@ try {
         'user_status_type' => $migCol['Type'] ?? null,
         'last_read_group_migrated' => !empty($chatReadMigCol),
         'habeeb_admin_ready' => !empty($verifiedAdmin) && $verifiedAdmin['role'] === 'admin',
+        'curriculum_seeded' => $curriculumSeeded ?? 0,
+        'total_resources' => $totalResources ?? 0,
         'migration_error' => $migrationError ?? null,
         'env_frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '(not set)',
         'received_origin' => $_SERVER['HTTP_ORIGIN'] ?? 'No origin received'

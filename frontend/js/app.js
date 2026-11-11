@@ -845,6 +845,18 @@ window.openEditResourceModal = async function(id) {
   await schoolController.openEditResourceModal(id);
 };
 
+window.openResourceViewer = async function(id) {
+  await schoolController.openResourceViewer(id);
+};
+
+window.closeResourceViewerModal = function() {
+  SchoolView.closeResourceViewerModal();
+};
+
+window.printResourceViewer = function() {
+  SchoolView.printResourceViewer();
+};
+
 window.closeResourceModal = function() {
   SchoolView.closeResourceModal();
 };
