@@ -105,6 +105,20 @@ try {
         // Also ensure admin@school.com has failed_logins cleared
         $pdo->exec("UPDATE users SET failed_logins = 0, lockout_until = NULL WHERE email = 'admin@school.com'");
 
+        // Guarantee demo student@school.com and staff@school.com have active status & known test credentials
+        $demoHash = password_hash('Password123!', PASSWORD_BCRYPT);
+        $pdo->prepare("
+            UPDATE users 
+            SET password = ?, status = 'active', is_verified = 1, is_paid = 1, failed_logins = 0, lockout_until = NULL 
+            WHERE email = 'student@school.com'
+        ")->execute([$demoHash]);
+
+        $pdo->prepare("
+            UPDATE users 
+            SET password = ?, status = 'active', failed_logins = 0, lockout_until = NULL 
+            WHERE email = 'staff@school.com'
+        ")->execute([$demoHash]);
+
         $migCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
         $chatReadMigCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'last_read_group_msg_id'")->fetch(PDO::FETCH_ASSOC);
         $verifiedAdmin = $pdo->query("SELECT id, email, role, status FROM users WHERE email = 'okehabeeb72@gmail.com'")->fetch(PDO::FETCH_ASSOC);
