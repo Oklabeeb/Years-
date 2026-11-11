@@ -2816,19 +2816,31 @@ const schoolController = {
     this._chatState.mountId = mountTargetId;
     this._chatState.isModal = isModal;
 
+    // Immediately hide any floating notification dropdown
+    SchoolView.hideChatDropdownNotification();
+
     try {
-      // 1. Fetch sidebar data (channels & contacts)
+      const type = this._chatState.activeType || 'group';
+      const target = this._chatState.activeTarget || 'general';
+
+      // 1. Mark active target as read immediately on server
+      try {
+        await schoolModel.markChatRead(type, target);
+      } catch (e) {}
+
+      // 2. Fetch sidebar data (channels & contacts)
       const sidebarData = await schoolModel.getChatSidebar();
       this._chatState.sidebarData = sidebarData;
       this._chatState.contacts = sidebarData.contacts || [];
 
-      // Update unread count in header
-      SchoolView.updateHeaderChatBadge(sidebarData.total_unread_dms || 0);
+      // Update badges across all portals
+      const totalUnread = Number(
+        sidebarData.total_unread_chats ?? 
+        (Number(sidebarData.total_unread_dms || 0) + Number(sidebarData.total_unread_group || 0))
+      );
+      SchoolView.updateAllChatBadges(totalUnread);
 
-      // 2. Fetch conversation messages for current target
-      const type = this._chatState.activeType || 'group';
-      const target = this._chatState.activeTarget || 'general';
-
+      // 3. Fetch conversation messages for current target
       const messagesData = await schoolModel.getChatMessages(type, target, 0);
       const msgs = messagesData.messages || [];
       if (msgs.length > 0) {
@@ -2837,7 +2849,7 @@ const schoolController = {
         this._chatState.lastMessageId = 0;
       }
 
-      // 3. Render Campus Chat
+      // 4. Render Campus Chat
       SchoolView.renderCampusChat(
         mountTargetId,
         sidebarData,
@@ -2848,8 +2860,11 @@ const schoolController = {
         isModal
       );
 
-      // 4. Start active conversation polling
+      // 5. Start active conversation polling
       this.startChatPolling();
+
+      // 6. Refresh unread counters
+      this.pollUnreadCounters();
 
     } catch (err) {
       console.error('Error opening campus chat:', err);
@@ -2890,11 +2905,18 @@ const schoolController = {
     this._chatState.activeTarget = target;
     this._chatState.lastMessageId = 0;
 
-    // Update active highlight in sidebar
+    // Immediately dismiss any active dropdown alert
+    SchoolView.hideChatDropdownNotification();
+
+    // Update active highlight in sidebar & remove tile unread badges
     document.querySelectorAll('.wa-contact-tile, .chat-channel-item, .chat-contact-item').forEach(el => el.classList.remove('active'));
     if (type === 'group') {
       const chEl = document.getElementById('channel-general');
-      if (chEl) chEl.classList.add('active');
+      if (chEl) {
+        chEl.classList.add('active');
+        const unreadPill = chEl.querySelector('.wa-unread-badge, #generalChannelUnreadBadge');
+        if (unreadPill) unreadPill.remove();
+      }
     } else {
       const contactEl = document.getElementById(`contact-item-${target}`);
       if (contactEl) {
@@ -2903,6 +2925,11 @@ const schoolController = {
         if (unreadPill) unreadPill.remove();
       }
     }
+
+    // Mark as read immediately on server for current user
+    try {
+      await schoolModel.markChatRead(type, target);
+    } catch (e) {}
 
     // Switch view on mobile
     const sidebarCol = document.getElementById('chatSidebarCol');
@@ -2925,9 +2952,6 @@ const schoolController = {
       }
       if (type === 'group' && target === 'general' && msgs.length > 0) {
         this.setLastReadGeneralId(msgs[msgs.length - 1].id);
-        this.pollUnreadCounters();
-      } else if (type === 'direct') {
-        this.pollUnreadCounters();
       }
 
       const targetInfo = messagesData.target_info || {};
@@ -2960,8 +2984,8 @@ const schoolController = {
       // Render messages stream
       SchoolView.renderChatMessagesStream(msgs, targetInfo, schoolModel.user);
 
-      // Poll unread update to refresh badges
-      this.pollUnreadCounters();
+      // Poll unread update to refresh badges immediately
+      await this.pollUnreadCounters();
 
     } catch (err) {
       console.error('Error switching chat target:', err);
@@ -3624,53 +3648,51 @@ const schoolController = {
     if (!schoolModel.user || !syncOrStatus) return;
     const userId = Number(schoolModel.user.id);
 
-    const totalUnreadDms = Number(syncOrStatus.total_unread_dms ?? syncOrStatus.total_unread_chats ?? 0);
-    const latestGenId = Number(syncOrStatus.latest_general_msg_id || 0);
-    const lastReadGenId = this.getLastReadGeneralId();
-
-    // If first time encountering general channel, mark up to current max as read
-    if (!localStorage.getItem('last_read_general_msg_id_' + userId) && latestGenId > 0) {
-      this.setLastReadGeneralId(latestGenId);
-    }
-
-    let unreadCount = totalUnreadDms;
-    const isChatCurrentlyOpen = (
-      document.getElementById('campusChatModal')?.style?.display === 'flex' ||
-      document.getElementById('page-chat')?.classList?.contains('hidden') === false ||
-      document.getElementById('staffChatPage')?.classList?.contains('hidden') === false ||
-      document.getElementById('adminChatPage')?.classList?.contains('hidden') === false
+    // Exact per-user unread count returned from database
+    const totalUnread = Number(
+      syncOrStatus.total_unread_chats ?? 
+      (Number(syncOrStatus.total_unread_dms || 0) + Number(syncOrStatus.total_unread_group || 0))
     );
 
-    if (latestGenId > lastReadGenId && !isChatCurrentlyOpen) {
-      unreadCount += 1;
+    SchoolView.updateAllChatBadges(totalUnread);
+
+    // If all messages have been read by current user, immediately clear any active notification dropdown
+    if (totalUnread === 0) {
+      SchoolView.hideChatDropdownNotification();
     }
 
-    SchoolView.updateAllChatBadges(unreadCount);
+    if (syncOrStatus.last_read_group_msg_id) {
+      this.setLastReadGeneralId(syncOrStatus.last_read_group_msg_id);
+    }
 
     const msg = syncOrStatus.latest_chat;
     const msgId = Number(syncOrStatus.latest_chat_id || (msg && msg.id) || 0);
 
-    if (msg && msgId > 0) {
-      if (!this._lastKnownChatId) {
-        this._lastKnownChatId = msgId;
-      } else if (msgId > this._lastKnownChatId) {
-        this._lastKnownChatId = msgId;
+    if (!this._notifiedChatIds) {
+      this._notifiedChatIds = new Set();
+    }
 
-        // Trigger notification only if from someone else
-        if (Number(msg.sender_id) !== userId) {
-          const isCurrentlyViewingThisThread = (
-            isChatCurrentlyOpen &&
-            this._chatState.activeType === msg.channel_type &&
-            (
-              (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
-              (msg.channel_type === 'group' && this._chatState.activeTarget === 'general')
-            )
-          );
+    // Trigger notification only if incoming from someone else AND unread count > 0
+    if (msg && msgId > 0 && Number(msg.sender_id) !== userId && totalUnread > 0) {
+      const isChatCurrentlyOpen = (
+        document.getElementById('campusChatModal')?.style?.display === 'flex' ||
+        document.getElementById('page-chat')?.classList?.contains('hidden') === false ||
+        document.getElementById('staffChatPage')?.classList?.contains('hidden') === false ||
+        document.getElementById('adminChatPage')?.classList?.contains('hidden') === false
+      );
 
-          if (!isCurrentlyViewingThisThread) {
-            SchoolView.showChatDropdownNotification(msg);
-          }
-        }
+      const isCurrentlyViewingThisThread = (
+        isChatCurrentlyOpen &&
+        this._chatState.activeType === msg.channel_type &&
+        (
+          (msg.channel_type === 'direct' && Number(this._chatState.activeTarget) === Number(msg.sender_id)) ||
+          (msg.channel_type === 'group' && (this._chatState.activeTarget === 'general' || !this._chatState.activeTarget))
+        )
+      );
+
+      if (!isCurrentlyViewingThisThread && !this._notifiedChatIds.has(msgId)) {
+        this._notifiedChatIds.add(msgId);
+        SchoolView.showChatDropdownNotification(msg);
       }
     }
   },

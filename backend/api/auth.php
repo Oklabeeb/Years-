@@ -1246,13 +1246,39 @@ if ($action === 'live_sync') {
 
     // Chat unread count & latest chat message for instant dropdown alerts
     try {
+        $myPattern = '%,' . $myId . ',%';
+
+        // Fetch current user's group read watermark
+        $lastReadGenStmt = $pdo->prepare("SELECT COALESCE(last_read_group_msg_id, 0) FROM users WHERE id = ?");
+        $lastReadGenStmt->execute([$myId]);
+        $myLastReadGroupMsgId = (int)$lastReadGenStmt->fetchColumn();
+
+        // 1. Total unread DMs
         $chatUnreadStmt = $pdo->prepare("
             SELECT COUNT(*) FROM chat_messages 
             WHERE recipient_id = ? AND channel_type = 'direct' AND is_read = 0 AND deleted_at IS NULL
+              AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
         ");
-        $chatUnreadStmt->execute([$myId]);
-        $syncData['total_unread_chats'] = (int)$chatUnreadStmt->fetchColumn();
+        $chatUnreadStmt->execute([$myId, $myPattern]);
+        $totalUnreadDms = (int)$chatUnreadStmt->fetchColumn();
 
+        // 2. Total unread Group messages for current user
+        $unGrpStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM chat_messages
+            WHERE channel_type = 'group' AND deleted_at IS NULL
+              AND id > ?
+              AND sender_id != ?
+              AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
+        ");
+        $unGrpStmt->execute([$myLastReadGroupMsgId, $myId, $myPattern]);
+        $totalUnreadGroup = (int)$unGrpStmt->fetchColumn();
+
+        $syncData['total_unread_dms'] = $totalUnreadDms;
+        $syncData['total_unread_group'] = $totalUnreadGroup;
+        $syncData['total_unread_chats'] = $totalUnreadDms + $totalUnreadGroup;
+        $syncData['last_read_group_msg_id'] = $myLastReadGroupMsgId;
+
+        // Fetch latest unread chat message intended for this user
         $latestChatStmt = $pdo->prepare("
             SELECT m.id, m.sender_id, m.recipient_id, m.channel_type, m.channel_name, m.message, m.created_at,
                    u.name AS sender_name, u.role AS sender_role
@@ -1260,14 +1286,15 @@ if ($action === 'live_sync') {
             JOIN users u ON u.id = m.sender_id
             WHERE m.sender_id != ?
               AND m.deleted_at IS NULL
+              AND (m.deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
               AND (
-                  (m.channel_type = 'direct' AND m.recipient_id = ?)
-                  OR (m.channel_type = 'group')
+                  (m.channel_type = 'direct' AND m.recipient_id = ? AND m.is_read = 0)
+                  OR (m.channel_type = 'group' AND m.id > ?)
               )
             ORDER BY m.id DESC
             LIMIT 1
         ");
-        $latestChatStmt->execute([$myId, $myId]);
+        $latestChatStmt->execute([$myId, $myPattern, $myId, $myLastReadGroupMsgId]);
         $latestChat = $latestChatStmt->fetch(PDO::FETCH_ASSOC);
 
         if ($latestChat) {
@@ -1289,6 +1316,8 @@ if ($action === 'live_sync') {
         }
     } catch (Throwable $e) {
         $syncData['total_unread_chats'] = 0;
+        $syncData['total_unread_dms'] = 0;
+        $syncData['total_unread_group'] = 0;
         $syncData['latest_chat_id'] = 0;
         $syncData['latest_chat'] = null;
     }

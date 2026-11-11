@@ -52,6 +52,11 @@ try {
             $pdo->exec("ALTER TABLE users ADD COLUMN failed_logins INT NOT NULL DEFAULT 0 AFTER mfa_enabled");
         }
 
+        $chatReadCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'last_read_group_msg_id'")->fetchAll();
+        if (empty($chatReadCols)) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN last_read_group_msg_id INT NOT NULL DEFAULT 0 AFTER status");
+        }
+
         $loCols = $pdo->query("SHOW COLUMNS FROM users LIKE 'lockout_until'")->fetchAll();
         if (empty($loCols)) {
             $pdo->exec("ALTER TABLE users ADD COLUMN lockout_until DATETIME NULL AFTER failed_logins");
@@ -101,6 +106,7 @@ try {
         $pdo->exec("UPDATE users SET failed_logins = 0, lockout_until = NULL WHERE email = 'admin@school.com'");
 
         $migCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'status'")->fetch(PDO::FETCH_ASSOC);
+        $chatReadMigCol = $pdo->query("SHOW COLUMNS FROM users LIKE 'last_read_group_msg_id'")->fetch(PDO::FETCH_ASSOC);
         $verifiedAdmin = $pdo->query("SELECT id, email, role, status FROM users WHERE email = 'okehabeeb72@gmail.com'")->fetch(PDO::FETCH_ASSOC);
     } catch (Throwable $migErr) {
         $migrationError = $migErr->getMessage();
@@ -112,6 +118,7 @@ try {
         'database' => $result == 1 ? 'connected' : 'not connected',
         'schema_migrated' => true,
         'user_status_type' => $migCol['Type'] ?? null,
+        'last_read_group_migrated' => !empty($chatReadMigCol),
         'habeeb_admin_ready' => !empty($verifiedAdmin) && $verifiedAdmin['role'] === 'admin',
         'migration_error' => $migrationError ?? null,
         'env_frontend_origin' => getenv('FRONTEND_ORIGIN') ?: '(not set)',

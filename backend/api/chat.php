@@ -86,12 +86,30 @@ if ($action === 'get_sidebar') {
         $totalMembersStmt = $pdo->query("SELECT COUNT(*) FROM users");
         $totalMembers = (int)$totalMembersStmt->fetchColumn();
 
+        // Query current user's group read watermark
+        $lastReadGenStmt = $pdo->prepare("SELECT COALESCE(last_read_group_msg_id, 0) FROM users WHERE id = ?");
+        $lastReadGenStmt->execute([$myId]);
+        $myLastReadGroupMsgId = (int)$lastReadGenStmt->fetchColumn();
+
+        // Calculate unread group messages for current user
+        $genUnreadStmt = $pdo->prepare("
+            SELECT COUNT(*) 
+            FROM chat_messages 
+            WHERE channel_type = 'group' AND deleted_at IS NULL
+              AND id > ?
+              AND sender_id != ?
+              AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
+        ");
+        $genUnreadStmt->execute([$myLastReadGroupMsgId, $myId, $myPattern]);
+        $generalUnreadCount = (int)$genUnreadStmt->fetchColumn();
+
         $generalChannel = [
             'id' => 'general',
             'type' => 'group',
             'name' => 'General Community Group',
             'topic' => 'Public campus forum for all Students, Staff & Administration',
             'total_members' => $totalMembers,
+            'unread_count' => $generalUnreadCount,
             'last_message' => $lastGeneral ? ($lastGeneral['sender_name'] . ': ' . mb_substr($lastGeneral['message'], 0, 50)) : 'No messages yet',
             'last_message_time' => $lastGeneral ? $lastGeneral['created_at'] : null
         ];
@@ -183,7 +201,10 @@ if ($action === 'get_sidebar') {
             ],
             'general_channel' => $generalChannel,
             'contacts' => $contacts,
-            'total_unread_dms' => $totalUnreadDms
+            'total_unread_dms' => $totalUnreadDms,
+            'total_unread_group' => $generalUnreadCount,
+            'total_unread_chats' => ($totalUnreadDms + $generalUnreadCount),
+            'last_read_group_msg_id' => $myLastReadGroupMsgId
         ]);
         exit;
 
@@ -231,6 +252,16 @@ if ($action === 'get_messages') {
             $stmt = $pdo->prepare($sql);
             $stmt->execute($params);
             $rawMessages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Advance this viewing user's group read watermark to the latest group message ID
+            try {
+                $maxGroupStmt = $pdo->query("SELECT COALESCE(MAX(id), 0) FROM chat_messages WHERE channel_type = 'group' AND deleted_at IS NULL");
+                $maxGroupMsgId = (int)$maxGroupStmt->fetchColumn();
+                if ($maxGroupMsgId > 0) {
+                    $upGroup = $pdo->prepare("UPDATE users SET last_read_group_msg_id = GREATEST(COALESCE(last_read_group_msg_id, 0), ?) WHERE id = ?");
+                    $upGroup->execute([$maxGroupMsgId, $myId]);
+                }
+            } catch (Throwable $e) {}
 
             $messages = array_map(function($m) use ($myId) {
                 $sid = (int)$m['sender_id'];
@@ -359,6 +390,50 @@ if ($action === 'get_messages') {
             ]);
             exit;
         }
+
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'message' => 'Database error: ' . $e->getMessage()]);
+        exit;
+    }
+}
+
+// ==========================================================================
+// ACTION: MARK CHAT AS READ (INDIVIDUAL USER WATERMARK)
+// ==========================================================================
+if ($action === 'mark_read') {
+    $rawInput = file_get_contents('php://input');
+    $json = !empty($rawInput) ? json_decode($rawInput, true) : null;
+    $input = (is_array($json) && !empty($json)) ? $json : $_POST;
+
+    $type = $input['type'] ?? 'group';
+    $target = $input['target'] ?? 'general';
+
+    try {
+        if ($type === 'group') {
+            $maxGroupStmt = $pdo->query("SELECT COALESCE(MAX(id), 0) FROM chat_messages WHERE channel_type = 'group' AND deleted_at IS NULL");
+            $maxGroupMsgId = (int)$maxGroupStmt->fetchColumn();
+            if ($maxGroupMsgId > 0) {
+                $upGroupRead = $pdo->prepare("UPDATE users SET last_read_group_msg_id = GREATEST(COALESCE(last_read_group_msg_id, 0), ?) WHERE id = ?");
+                $upGroupRead->execute([$maxGroupMsgId, $myId]);
+            }
+        } else {
+            $senderId = (int)$target;
+            if ($senderId > 0) {
+                $readStmt = $pdo->prepare("
+                    UPDATE chat_messages
+                    SET is_read = 1
+                    WHERE sender_id = ? AND recipient_id = ? AND channel_type = 'direct' AND is_read = 0
+                ");
+                $readStmt->execute([$senderId, $myId]);
+            }
+        }
+
+        echo json_encode([
+            'success' => true,
+            'message' => 'Chat marked as read.'
+        ]);
+        exit;
 
     } catch (PDOException $e) {
         http_response_code(500);
@@ -651,22 +726,43 @@ if ($action === 'clear_chat') {
 // ==========================================================================
 if ($action === 'poll_unread') {
     try {
-        // Total unread DMs
+        $myPattern = '%,' . $myId . ',%';
+
+        // Fetch current user's group read watermark
+        $lastReadGenStmt = $pdo->prepare("SELECT COALESCE(last_read_group_msg_id, 0) FROM users WHERE id = ?");
+        $lastReadGenStmt->execute([$myId]);
+        $myLastReadGroupMsgId = (int)$lastReadGenStmt->fetchColumn();
+
+        // 1. Total unread DMs
         $unStmt = $pdo->prepare("
             SELECT COUNT(*) FROM chat_messages
             WHERE recipient_id = ? AND channel_type = 'direct' AND is_read = 0 AND deleted_at IS NULL
+              AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
         ");
-        $unStmt->execute([$myId]);
+        $unStmt->execute([$myId, $myPattern]);
         $totalUnreadDms = (int)$unStmt->fetchColumn();
+
+        // 2. Total unread Group messages for current user
+        $unGrpStmt = $pdo->prepare("
+            SELECT COUNT(*) FROM chat_messages
+            WHERE channel_type = 'group' AND deleted_at IS NULL
+              AND id > ?
+              AND sender_id != ?
+              AND (deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
+        ");
+        $unGrpStmt->execute([$myLastReadGroupMsgId, $myId, $myPattern]);
+        $totalUnreadGroup = (int)$unGrpStmt->fetchColumn();
+
+        $totalUnreadChats = $totalUnreadDms + $totalUnreadGroup;
 
         // Max ID in general channel
         $maxGenStmt = $pdo->query("
-            SELECT MAX(id) FROM chat_messages
-            WHERE channel_type = 'group' AND channel_name = 'general' AND deleted_at IS NULL
+            SELECT COALESCE(MAX(id), 0) FROM chat_messages
+            WHERE channel_type = 'group' AND deleted_at IS NULL
         ");
         $maxGeneralId = (int)$maxGenStmt->fetchColumn();
 
-        // Fetch latest incoming chat message for instant 5-second dropdown notification
+        // Fetch latest unread chat message intended for this user
         $latestChatStmt = $pdo->prepare("
             SELECT m.id, m.sender_id, m.recipient_id, m.channel_type, m.channel_name, m.message, m.created_at,
                    u.name AS sender_name, u.role AS sender_role
@@ -674,14 +770,15 @@ if ($action === 'poll_unread') {
             JOIN users u ON u.id = m.sender_id
             WHERE m.sender_id != ?
               AND m.deleted_at IS NULL
+              AND (m.deleted_for_users IS NULL OR CONCAT(',', deleted_for_users, ',') NOT LIKE ?)
               AND (
-                  (m.channel_type = 'direct' AND m.recipient_id = ?)
-                  OR (m.channel_type = 'group')
+                  (m.channel_type = 'direct' AND m.recipient_id = ? AND m.is_read = 0)
+                  OR (m.channel_type = 'group' AND m.id > ?)
               )
             ORDER BY m.id DESC
             LIMIT 1
         ");
-        $latestChatStmt->execute([$myId, $myId]);
+        $latestChatStmt->execute([$myId, $myPattern, $myId, $myLastReadGroupMsgId]);
         $latestChat = $latestChatStmt->fetch(PDO::FETCH_ASSOC);
 
         $latestChatData = null;
@@ -703,7 +800,10 @@ if ($action === 'poll_unread') {
 
         echo json_encode([
             'success' => true,
+            'total_unread_chats' => $totalUnreadChats,
             'total_unread_dms' => $totalUnreadDms,
+            'total_unread_group' => $totalUnreadGroup,
+            'last_read_group_msg_id' => $myLastReadGroupMsgId,
             'latest_general_msg_id' => $maxGeneralId,
             'latest_chat' => $latestChatData,
             'latest_chat_id' => $latestChatId

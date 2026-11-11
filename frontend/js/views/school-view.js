@@ -4898,6 +4898,7 @@ const SchoolView = {
                     <div class="wa-tile-preview-wrap">
                       <span class="wa-tile-preview">${this.escapeHtml(general.last_message || 'Public campus forum')}</span>
                     </div>
+                    ${Number(general.unread_count) > 0 ? `<span class="wa-unread-badge" id="generalChannelUnreadBadge">${general.unread_count}</span>` : ''}
                   </div>
                 </div>
               </div>
@@ -5012,7 +5013,7 @@ const SchoolView = {
       });
     }
 
-    // Optionally update general channel preview if provided
+    // Optionally update general channel preview and unread badge if provided
     if (generalChannel) {
       const genTile = document.getElementById('channel-general');
       if (genTile) {
@@ -5020,6 +5021,20 @@ const SchoolView = {
         const tEl = genTile.querySelector('.wa-tile-time');
         if (pEl && generalChannel.last_message) pEl.textContent = generalChannel.last_message;
         if (tEl && generalChannel.last_message_time) tEl.textContent = this._formatChatTime(generalChannel.last_message_time);
+
+        let badgeEl = genTile.querySelector('.wa-unread-badge');
+        const unreadGrp = Number(generalChannel.unread_count) || 0;
+        if (unreadGrp > 0) {
+          if (!badgeEl) {
+            badgeEl = document.createElement('span');
+            badgeEl.className = 'wa-unread-badge';
+            badgeEl.id = 'generalChannelUnreadBadge';
+            genTile.querySelector('.wa-tile-bottom')?.appendChild(badgeEl);
+          }
+          badgeEl.textContent = unreadGrp > 99 ? '99+' : String(unreadGrp);
+        } else if (badgeEl) {
+          badgeEl.remove();
+        }
       }
     }
 

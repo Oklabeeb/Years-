@@ -1061,12 +1061,26 @@ const schoolModel = {
     throw new Error((res.data && res.data.message) || 'Failed to clear chat.');
   },
 
+  async markChatRead(type = 'group', target = 'general') {
+    try {
+      const res = await this.safeFetch('api/chat.php?action=mark_read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, target })
+      });
+      if (res.ok && res.data && res.data.success) {
+        return res.data;
+      }
+    } catch (e) {}
+    return { success: false };
+  },
+
   async pollChatUnread() {
     const res = await this.safeFetch('api/chat.php?action=poll_unread');
     if (res.ok && res.data && res.data.success) {
       return res.data;
     }
-    return { success: false, total_unread_dms: 0, latest_general_msg_id: 0 };
+    return { success: false, total_unread_chats: 0, total_unread_dms: 0, total_unread_group: 0, latest_general_msg_id: 0 };
   },
 
   /* ------------------------------------------------------------------------
